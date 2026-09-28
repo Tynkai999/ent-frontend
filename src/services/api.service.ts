@@ -108,6 +108,17 @@ class ApiService {
       return null;
     }
 
+    const isLocalhost =
+      typeof window !== 'undefined' &&
+      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+    const primaryEndpoint = isLocalhost
+      ? `/auth/realms/${KEYCLOAK_REALM}/protocol/openid-connect/token`
+      : TOKEN_ENDPOINT;
+    const fallbackEndpoint = isLocalhost
+      ? TOKEN_ENDPOINT
+      : `/auth/realms/${KEYCLOAK_REALM}/protocol/openid-connect/token`;
+
     let response: Response;
     try {
       const body = new URLSearchParams({
@@ -115,16 +126,26 @@ class ApiService {
         client_id: KEYCLOAK_CLIENT_ID,
         refresh_token: refreshToken,
       });
-      response = await fetch(TOKEN_ENDPOINT, {
+      response = await fetch(primaryEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body,
       });
     } catch {
-      // Keycloak injoignable (panne réseau/serveur transitoire) : le
-      // refresh token lui-même n'est pas forcément invalide, donc on ne
-      // déconnecte pas l'utilisateur pour autant.
-      throw new NetworkError();
+      try {
+        const body = new URLSearchParams({
+          grant_type: 'refresh_token',
+          client_id: KEYCLOAK_CLIENT_ID,
+          refresh_token: refreshToken,
+        });
+        response = await fetch(fallbackEndpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body,
+        });
+      } catch {
+        throw new NetworkError();
+      }
     }
 
     if (!response.ok) {
@@ -139,10 +160,11 @@ class ApiService {
   }
 
   private handleUnauthorized(): void {
-    this.clearTokens();
-    if (window.location.pathname !== '/login') {
-      window.location.href = '/login';
+    if (window.location.pathname === '/login') {
+      return;
     }
+    this.clearTokens();
+    window.location.href = '/login';
   }
 
   private getFallbackMessage(status: number): string {
@@ -608,7 +630,9 @@ class ApiService {
         const refreshed = await this.tryRefresh();
         if (refreshed) return this.request<T>(endpoint, options, true);
       }
-      this.handleUnauthorized();
+      if (endpoint !== '/me/' && !endpoint.startsWith('/me') && window.location.pathname !== '/login') {
+        this.handleUnauthorized();
+      }
       throw new Error('Session expirée. Veuillez vous reconnecter.');
     }
 
@@ -666,7 +690,9 @@ class ApiService {
         const refreshed = await this.tryRefresh();
         if (refreshed) return this.requestFormData<T>(endpoint, method, formData, true);
       }
-      this.handleUnauthorized();
+      if (window.location.pathname !== '/login') {
+        this.handleUnauthorized();
+      }
       throw new Error('Session expirée. Veuillez vous reconnecter.');
     }
     if (!response.ok) throw new Error(await this.getErrorMessage(response));

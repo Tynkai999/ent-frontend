@@ -131,7 +131,11 @@ const Dashboard: React.FC = () => {
 
   useEffect(() => {
     meService.platforms()
-      .then((res) => setPlatforms(res.results))
+      .then((res) => setPlatforms(res?.results || []))
+      .catch((err) => {
+        console.warn('Impossible de charger les plateformes:', err);
+        setPlatforms([]);
+      })
       .finally(() => setLoading(false));
   }, []);
 
