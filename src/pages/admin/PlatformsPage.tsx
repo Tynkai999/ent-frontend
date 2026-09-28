@@ -263,6 +263,7 @@ const PlatformsPage: React.FC = () => {
       .finally(() => setLoading(false));
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { const t = setTimeout(load, 250); return () => clearTimeout(t); }, [search]);
 
   const columns: TableColumn<Platform>[] = [
