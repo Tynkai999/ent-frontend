@@ -7,6 +7,8 @@ import type {
   ConversationSession,
   ConversationSessionDetail,
 } from '../models/Ai.model';
+import type { User } from '../models/User.model';
+import { ROLE_LABELS } from '../models/User.model';
 import { apiService } from './api.service';
 import type { Paginated } from './types';
 
@@ -88,10 +90,11 @@ export function isENTTopic(query: string): boolean {
 }
 
 /**
- * Moteur RAG hybride : interroge la base de connaissances documentaire
- * et le catalogue applicatif officiel de l'ENT (ent.tpe.bf).
+ * Moteur RAG contextuel et intelligent :
+ * Prend en compte l'identité et le rôle précis de l'utilisateur (super_admin, org_admin, client_user)
+ * pour adapter les privilèges, avertissements de sécurité et conseils opérationnels.
  */
-export function generateRAGResponse(query: string): {
+export function generateRAGResponse(query: string, user?: User | null): {
   answer: string;
   sources: AiSource[];
   suggested_questions: string[];
@@ -99,6 +102,12 @@ export function generateRAGResponse(query: string): {
   platform: string;
 } {
   const q = query.toLowerCase();
+  const role = user?.role || 'super_admin';
+  const isSuperAdmin = role === 'super_admin';
+  const isOrgAdmin = role === 'org_admin';
+  const isAdmin = isSuperAdmin || isOrgAdmin;
+  const roleLabel = ROLE_LABELS[role] || role;
+  const orgName = user?.organization_name ? ` (${user.organization_name})` : '';
 
   // 1. Cahier des charges APEC / MedScan Enterprise (v1.0)
   if (
@@ -193,10 +202,46 @@ export function generateRAGResponse(query: string): {
     };
   }
 
-  // 3. Plateforme Economat (ECO)
+  // 3. Plateforme Economat (ECO) — Personnalisé selon le rôle
   if (q.includes('economat') || q.includes('cvb')) {
+    if (!isAdmin) {
+      return {
+        answer: `D'après le **Manuel d'utilisation Economat (v1.0)**, voici comment utiliser la plateforme avec votre profil **${roleLabel}** :
+
+- **URL officielle** : [https://economat.tpe.bf/](https://economat.tpe.bf/)
+- **Statut** : Actif en production
+
+### 1. Utilisation du Module CVB (Commandes de fournitures)
+En tant qu'utilisateur, votre rôle principal consiste à formuler des réquisitions pour vos besoins matériels :
+1. **Accès au catalogue** : Connectez-vous sur Economat via le SSO ENT et parcourez les articles disponibles (papeterie, consommables, informatique).
+2. **Composition du panier** : Ajoutez les quantités requises et indiquez le motif/justificatif de votre demande.
+3. **Soumission de la réquisition** : Validez votre panier pour transmission automatique à votre responsable hiérarchique.
+4. **Suivi & Réception** : Consultez le statut de validation de votre commande jusqu'à l'émission du bon de sortie et la remise effective.
+
+> [!NOTE]
+> La gestion des stocks, le paramétrage des catalogues et les seuils d'approvisionnement sont réservés aux gestionnaires d'économat (Module Admin).`,
+        sources: [
+          {
+            document_id: '9dd08a45-cbce-476d-b300-946e0854cefa',
+            document_title: "Manuel d'utilisation Economat (APEC)",
+            version: '1.0',
+            page: 2,
+            snippet: "Le module CVB permet aux agents d'effectuer des réquisitions de fournitures et d'en suivre le circuit de validation.",
+            url: '/documents',
+          },
+        ],
+        suggested_questions: [
+          'Comment suivre l\'état de ma commande sur Economat ?',
+          'Comment modifier un panier avant soumission ?',
+          'Que faire si un article n\'est pas disponible en catalogue ?',
+        ],
+        intent: 'rag',
+        platform: 'Economat (ECO)',
+      };
+    }
+
     return {
-      answer: `Voici la présentation détaillée de la plateforme **Economat (ECO)** connectée à l'ENT :
+      answer: `Voici la présentation détaillée de la plateforme **Economat (ECO)** connectée à l'ENT (Votre profil : **${roleLabel}**) :
 
 - **URL officielle** : [https://economat.tpe.bf/](https://economat.tpe.bf/)
 - **Statut** : Actif en production
@@ -357,7 +402,7 @@ export function generateRAGResponse(query: string): {
 | **BigBlueButton** | \`BBB\` | Salles virtuelles, réunions en visioconférence et partages d'écran | Intégré ENT |
 
 > [!NOTE]
-> Toutes ces plateformes bénéficient de l'**authentification unique (SSO Keycloak)**. Vous pouvez configurer les droits d'accès des collaborateurs depuis l'onglet **Accès & Permissions**.`,
+> Toutes ces plateformes bénéficient de l'**authentification unique (SSO Keycloak)**.${isAdmin ? ' Vous pouvez configurer les droits d\'accès des collaborateurs depuis l\'onglet **Accès & Permissions**.' : ' Vos droits d\'accès effectifs sont attribués par l\'administrateur de votre organisation.'}`,
       sources: [
         {
           document_title: 'Catalogue des Plateformes & Services ENT',
@@ -376,11 +421,17 @@ export function generateRAGResponse(query: string): {
           url: '/documents',
         },
       ],
-      suggested_questions: [
-        'Comment attribuer un accès à une plateforme pour un utilisateur ?',
-        'Quels modules sont activés sur Economat ?',
-        'Que contient le cahier des charges APEC ?',
-      ],
+      suggested_questions: isAdmin
+        ? [
+            'Comment attribuer un accès à une plateforme pour un utilisateur ?',
+            'Quels modules sont activés sur Economat ?',
+            'Que contient le cahier des charges APEC ?',
+          ]
+        : [
+            'Quelles sont les plateformes autorisées pour mon profil ?',
+            'Comment accéder au module CVB sur Economat ?',
+            'Comment demander un accès à une nouvelle application ?',
+          ],
       intent: 'rag',
       platform: 'Catalogue ENT',
     };
@@ -592,7 +643,7 @@ export function generateRAGResponse(query: string): {
     };
   }
 
-  // 12. Utilisateurs, Sécurité, Accès, Invitations, Mots de passe
+  // 12. Utilisateurs, Sécurité, Accès, Invitations, Mots de passe — Adapté RBAC selon rôle
   if (
     q.includes('accès') ||
     q.includes('acces') ||
@@ -606,8 +657,49 @@ export function generateRAGResponse(query: string): {
     q.includes('suspend') ||
     q.includes('keycloak')
   ) {
+    // Si l'utilisateur n'a pas les droits d'administration
+    if (!isAdmin) {
+      return {
+        answer: `D'après la **Documentation d'Administration des Droits & Keycloak ENT (v1.2)** :
+
+> [!IMPORTANT]
+> **Profil connecté : ${roleLabel}${orgName}**  
+> Les fonctionnalités d'administration des utilisateurs, d'invitation de nouveaux membres et d'attribution des rôles Keycloak sont réservées aux **Administrateurs d'organisation** et **Super Administrateurs**.
+
+### 1. Que pouvez-vous faire avec votre compte utilisateur ?
+- **Consulter vos habilitations** : Vos plateformes autorisées apparaissent directement sur votre tableau de bord.
+- **Paramètres personnels** : Vous pouvez modifier vos coordonnées et changer votre mot de passe depuis l'icône de profil en haut à droite.
+- **Accéder à vos services** : Cliquez sur vos modules débloqués pour accéder directement en SSO à vos espaces de travail (Economat, Moodle, Nextcloud, etc.).
+
+### 2. Comment obtenir un nouvel accès ou inviter un collègue ?
+- Contactez directement l'administrateur de votre organisation${user?.organization_name ? ` (**${user.organization_name}**)` : ''}.
+- L'administrateur pourra vous assigner les permissions nécessaires via l'interface d'administration centrale de l'ENT.`,
+        sources: [
+          {
+            document_id: 'doc-admin',
+            document_title: "Guide d'administration des droits & Keycloak ENT",
+            version: '1.2',
+            page: 2,
+            snippet: "La gestion des habilitations est déléguée aux administrateurs d'organisation selon le modèle RBAC.",
+            url: '/documents',
+          },
+        ],
+        suggested_questions: [
+          'Quelles sont les plateformes auxquelles j\'ai accès ?',
+          'Comment modifier mon mot de passe personnel ?',
+          'Comment contacter l\'administrateur de mon organisation ?',
+        ],
+        intent: 'rag',
+        platform: 'Gestion des Accès',
+      };
+    }
+
+    // Si administrateur (Super Admin ou Org Admin)
     return {
       answer: `D'après la **Documentation d'Administration des Droits & Keycloak ENT (v1.2)** :
+
+> **Profil actif : ${roleLabel}${orgName}**  
+> ${isSuperAdmin ? 'En tant que **Super Administrateur**, vous disposez des droits complets sur l\'ensemble des organisations et de la console Keycloak.' : 'En tant qu\'**Administrateur Organisation**, vous gérez les membres et attributions au sein de votre entité.'}
 
 ### 1. Invitation d'un nouvel utilisateur
 - Accédez à **Administration > Utilisateurs**, puis cliquez sur **« Inviter un utilisateur »**.
@@ -643,17 +735,18 @@ export function generateRAGResponse(query: string): {
     };
   }
 
-  // 13. Réponse générale d'assistance RAG
+  // 13. Réponse générale d'assistance RAG adaptée au profil
   return {
-    answer: `Bonjour ! Je suis l'Assistant IA connecté à l'écosystème de l'**ENT (ent.tpe.bf)**.
+    answer: `Bonjour${user?.first_name ? ` ${user.first_name}` : ''} ! Je suis l'Assistant IA connecté à l'écosystème de l'**ENT (ent.tpe.bf)**.
 
-Je suis synchronisé en temps réel avec le **catalogue des plateformes** et la **base documentaire officielle** :
+Vous êtes actuellement connecté en tant que **${roleLabel}**${orgName}.
 
+Voici les ressources et services clés configurés pour votre profil :
 - **Plateformes actives** : **Economat** (approvisionnements & stocks), **E-Timbre** (timbres fiscaux certifiés), **Parc Manager** (inventaire informatique), **SGI-GCOB** (comptabilité budgétaire).
 - **Documents & Manuels** : **Manuel d'utilisation Economat (v1.0)**, **Cahier des charges APEC (v1.0)**, Guides formateurs Moodle, Nextcloud et Visioconférence.
-- **Administration & Sécurité** : Rôles Keycloak, invitations sécurisées et attributions d'accès.
+${isAdmin ? '- **Administration & Sécurité** : Rôles Keycloak, invitations sécurisées et attributions d\'accès.' : '- **Espace Utilisateur** : Suivi de vos commandes, partage de fichiers et collaboration.'}
 
-*Précisez votre question ou choisissez une suggestion ci-dessous pour que je consulte les documents appropriés.*`,
+*Posez votre question ou sélectionnez une suggestion ci-dessous pour que je consulte les manuels appropriés.*`,
     sources: [
       {
         document_id: '9dd08a45-cbce-476d-b300-946e0854cefa',
@@ -672,12 +765,19 @@ Je suis synchronisé en temps réel avec le **catalogue des plateformes** et la 
         url: '/documents',
       },
     ],
-    suggested_questions: [
-      'Quelles sont les plateformes disponibles sur l\'ENT ?',
-      'Que contient le manuel d\'utilisation Economat ?',
-      'Quelles sont les spécifications du cahier des charges APEC ?',
-      'Comment fonctionne la gestion des accès et rôles ?',
-    ],
+    suggested_questions: isAdmin
+      ? [
+          'Quelles sont les plateformes disponibles sur l\'ENT ?',
+          'Que contient le manuel d\'utilisation Economat ?',
+          'Quelles sont les spécifications du cahier des charges APEC ?',
+          'Comment fonctionne la gestion des accès et rôles ?',
+        ]
+      : [
+          'Quelles sont les plateformes auxquelles j\'ai accès ?',
+          'Comment soumettre une commande dans le module CVB d\'Economat ?',
+          'Comment partager un document sécurisé sur Nextcloud ?',
+          'Comment participer à une visioconférence BigBlueButton ?',
+        ],
     intent: 'rag',
     platform: 'ENT Général',
   };
@@ -707,9 +807,10 @@ export const aiService = {
   chat: async (data: ChatRequest): Promise<ChatResponse> => {
     const isMock = localStorage.getItem('ent_mock_mode') === 'true';
     const isKnown = isENTTopic(data.message);
+    const user = data.user || null;
 
     if (isMock || isKnown) {
-      const rag = generateRAGResponse(data.message);
+      const rag = generateRAGResponse(data.message, user);
       return {
         session_id: data.session_id || `sess-${Date.now()}`,
         session_title: data.message.slice(0, 40),
@@ -731,7 +832,7 @@ export const aiService = {
         resp.answer.toLowerCase().includes("ne dispose pas d'informations") ||
         (resp.sources?.length === 0 && isENTTopic(data.message))
       ) {
-        const rag = generateRAGResponse(data.message);
+        const rag = generateRAGResponse(data.message, user);
         return {
           ...resp,
           answer: rag.answer,
@@ -743,7 +844,7 @@ export const aiService = {
       }
       return resp;
     } catch {
-      const rag = generateRAGResponse(data.message);
+      const rag = generateRAGResponse(data.message, user);
       return {
         session_id: data.session_id || `sess-${Date.now()}`,
         session_title: data.message.slice(0, 40),
@@ -765,7 +866,7 @@ export const aiService = {
   /**
    * Envoi d'un message avec streaming SSE (Server-Sent Events) mot par mot.
    * Récupère en temps réel le texte, les sources documentaires RAG et les métadonnées.
-   * Offre une expérience fluide et instantanée en démo comme en connecté sur l'ENT.
+   * Offre une expérience fluide, contextuelle et adaptée au rôle de l'utilisateur.
    */
   chatStream: async (
     data: ChatRequest,
@@ -776,6 +877,7 @@ export const aiService = {
     const isMock = localStorage.getItem('ent_mock_mode') === 'true';
     const isKnown = isENTTopic(data.message);
     const token = apiService.getToken();
+    const user = data.user || null;
 
     // Enregistrement de session côté backend en arrière-plan si connecté
     let currentSessionId = data.session_id;
@@ -788,14 +890,13 @@ export const aiService = {
           currentSessionId = newSession.id;
         }
       } catch {
-        // Poursuivre avec un ID local si échec de création
         currentSessionId = `sess-${Date.now()}`;
       }
     }
 
-    // Si la requête concerne l'ENT, ses plateformes ou ses documents, le RAG local garantit une réponse immédiate et riche
+    // Si la requête concerne l'ENT, le RAG local contextualisé au rôle garantit une réponse immédiate
     if (isMock || isKnown) {
-      const rag = generateRAGResponse(data.message);
+      const rag = generateRAGResponse(data.message, user);
       const words = rag.answer.split(' ');
       let current = '';
       for (const word of words) {
@@ -814,7 +915,7 @@ export const aiService = {
       return current;
     }
 
-    // Cas d'une question hors périmètre ENT : interrogation du backend distant avec fallback RAG
+    // Question hors périmètre : streaming depuis le backend distant avec fallback RAG
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       Accept: 'text/event-stream',
@@ -900,12 +1001,12 @@ export const aiService = {
         }
       }
 
-      // Si le backend distant a renvoyé un refus "ne dispose pas d'informations", substituer le RAG
+      // Si le backend renvoie un refus d'information, substituer avec le RAG personnalisé selon le rôle
       if (
         fullText.toLowerCase().includes("ne dispose pas d'informations") ||
         (!metadata.sources || metadata.sources.length === 0)
       ) {
-        const rag = generateRAGResponse(data.message);
+        const rag = generateRAGResponse(data.message, user);
         onDone?.(rag.answer, {
           sources: rag.sources,
           suggested_questions: rag.suggested_questions,

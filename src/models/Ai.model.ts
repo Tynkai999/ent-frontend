@@ -34,10 +34,13 @@ export interface ConversationSessionDetail extends ConversationSession {
   messages: ChatMessage[];
 }
 
+import type { User } from './User.model';
+
 export interface ChatRequest {
   message: string;
   session_id?: string | null;
   image?: string | null;
+  user?: User | null;
 }
 
 export interface ChatResponse {

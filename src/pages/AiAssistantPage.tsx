@@ -24,6 +24,8 @@ import MarkdownRenderer from '../components/MarkdownRenderer';
 import { aiService } from '../services/ai.service';
 import { documentService } from '../services/document.service';
 import { platformService } from '../services/platform.service';
+import { useAuth } from '../contexts/AuthContext';
+import { ROLE_LABELS } from '../models/User.model';
 import type {
   AiStatsResponse,
   ChatMessage,
@@ -33,6 +35,7 @@ import type { Document } from '../models/Document.model';
 import type { Platform } from '../models/Platform.model';
 
 export const AiAssistantPage: React.FC = () => {
+  const { user } = useAuth();
   const [sessions, setSessions] = useState<ConversationSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -45,12 +48,40 @@ export const AiAssistantPage: React.FC = () => {
   const [availablePlatforms, setAvailablePlatforms] = useState<Platform[]>([]);
   const [showDocsDrawer, setShowDocsDrawer] = useState(false);
 
+  const isSuperAdmin = user?.role === 'super_admin';
+  const isOrgAdmin = user?.role === 'org_admin';
+
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([
     "Quelles sont les plateformes disponibles sur l'ENT ?",
     "Que contient le manuel d'utilisation Economat ?",
     "Quelles sont les spécifications du cahier des charges APEC ?",
     "Comment fonctionne la gestion des accès et rôles ?",
   ]);
+
+  useEffect(() => {
+    if (isSuperAdmin) {
+      setSuggestedQuestions([
+        "Quelles sont les plateformes disponibles sur l'ENT ?",
+        "Comment fonctionne la gestion des accès et rôles Keycloak ?",
+        "Que contient le cahier des charges APEC ?",
+        "Comment superviser les organisations et les audits ?",
+      ]);
+    } else if (isOrgAdmin) {
+      setSuggestedQuestions([
+        "Comment inviter un collaborateur dans mon organisation ?",
+        "Comment attribuer un accès à Economat ou Parc Manager ?",
+        "Que contient le manuel d'utilisation Economat ?",
+        "Comment gérer les réquisitions de mon entité ?",
+      ]);
+    } else {
+      setSuggestedQuestions([
+        "Quelles sont les plateformes autorisées pour mon compte ?",
+        "Comment soumettre une commande dans le module CVB d'Economat ?",
+        "Comment partager un document sécurisé sur Nextcloud ?",
+        "Comment participer à une visioconférence BigBlueButton ?",
+      ]);
+    }
+  }, [user?.role, isSuperAdmin, isOrgAdmin]);
 
   // Modale Statistiques
   const [statsOpen, setStatsOpen] = useState(false);
@@ -124,18 +155,32 @@ export const AiAssistantPage: React.FC = () => {
 
   const handleNewChat = () => {
     setActiveSessionId(null);
+    const roleLabel = user ? (ROLE_LABELS[user.role] || user.role) : 'Utilisateur';
+    const orgLabel = user?.organization_name ? ` (${user.organization_name})` : '';
+
     setMessages([
       {
         id: 'welcome-init',
         role: 'assistant',
-        content: `### Bonjour ! Je suis l'Assistant IA de l'ENT
-Je suis connecté à la **base documentaire officielle** et au **catalogue des plateformes** de l'ENT (\`ent.tpe.bf\`). 
+        content: `### Bonjour${user?.first_name ? ` ${user.first_name}` : ''} !
+Je suis l'Assistant IA de l'ENT, configuré pour votre profil **${roleLabel}**${orgLabel}.
 
-Je peux vous guider et répondre avec précision à partir des documents et spécifications de l'écosystème :
-- **Plateformes actives** : **Economat** (\`ECO\`), **E-Timbre** (\`ET\`), **Parc Manager** (\`PM\`), **SGI-GCOB** (\`GCOB\`).
-- **Documents & Manuels** : **Manuel d'utilisation Economat (v1.0)**, **Cahier des charges APEC (v1.0)**.
-- **Outils collaboratifs** : Moodle LMS, Nextcloud Espace, BigBlueButton Visio.
-- **Administration & Sécurité** : Rôles Keycloak, gestion des organisations et attributions d'accès.
+${
+  isSuperAdmin
+    ? `En tant que **Super Administrateur**, vous disposez d'un contrôle global sur l'écosystème :
+- **Gouvernance des plateformes** : Economat, E-Timbre, Parc Manager, SGI-GCOB.
+- **Spécifications techniques** : Cahier des charges APEC (v1.0), intégration SSO Keycloak.
+- **Sécurité et supervision** : Gestion des organisations, permissions et journal d'audit.`
+    : isOrgAdmin
+    ? `En tant qu'**Administrateur de votre Organisation**, vous gérez les membres et leurs outils :
+- **Gestion des membres** : Invitations de collaborateurs et suivi des comptes.
+- **Attributions d'accès** : Droits sur Economat, Parc Manager, E-Timbre.
+- **Documentation métier** : Manuel Economat, gestion des réquisitions.`
+    : `En tant qu'**Utilisateur**, voici comment je peux vous guider au quotidien :
+- **Vos outils métiers** : Utilisation du module de commande CVB d'Economat, accès aux timbres.
+- **Collaboration & Partage** : Guides Nextcloud (fichiers) et BigBlueButton (visio).
+- **Assistance & Accompagnement** : Réponses à vos questions sur les documents officiels.`
+}
 
 *Posez votre question ci-dessous ou cliquez sur l'un des guides proposés.*`,
         sources: [
@@ -237,7 +282,7 @@ Je peux vous guider et répondre avec précision à partir des documents et spé
     try {
       let accumulated = '';
       await aiService.chatStream(
-        { message: text, session_id: activeSessionId },
+        { message: text, session_id: activeSessionId, user },
         (chunk) => {
           accumulated += chunk;
           setMessages((prev) =>
@@ -269,7 +314,7 @@ Je peux vous guider et répondre avec précision à partir des documents et spé
         },
         async () => {
           // Fallback synchrone si échec SSE
-          const resp = await aiService.chat({ message: text, session_id: activeSessionId });
+          const resp = await aiService.chat({ message: text, session_id: activeSessionId, user });
           if (!activeSessionId && resp.session_id) {
             setActiveSessionId(resp.session_id);
           }
@@ -401,6 +446,17 @@ Je peux vous guider et répondre avec précision à partir des documents et spé
                   Assistant Documentaire ENT
                   <span className="text-[10px] font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60">
                     RAG Actif
+                  </span>
+                  <span
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                      isSuperAdmin
+                        ? 'bg-purple-50 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800'
+                        : isOrgAdmin
+                        ? 'bg-amber-50 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800'
+                        : 'bg-blue-50 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800'
+                    }`}
+                  >
+                    {user ? ROLE_LABELS[user.role] || user.role : 'Utilisateur'}
                   </span>
                 </h1>
                 <p className="text-[11px] text-slate-400">
