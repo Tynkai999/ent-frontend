@@ -459,6 +459,97 @@ class ApiService {
           return resolve(MOCK_STATS_OVERVIEW as T);
         }
 
+        // AI ASSISTANT
+        if (url.startsWith('/ai/sessions/')) {
+          if (url.includes('/clear/')) {
+            return resolve({
+              id: 'sess-mock-1',
+              title: 'Discussion avec Assistant IA',
+              is_active: true,
+              messages: [],
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            } as T);
+          }
+          if (method === 'DELETE') {
+            return resolve({ detail: 'Session supprimée' } as T);
+          }
+          if (url === '/ai/sessions/') {
+            return resolve({
+              count: 1,
+              next: null,
+              previous: null,
+              results: [
+                {
+                  id: 'sess-mock-1',
+                  title: 'Aide sur le module Economat',
+                  is_active: true,
+                  messages_count: 2,
+                  last_message_preview: 'Comment configurer un article ?',
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString(),
+                },
+              ],
+            } as T);
+          }
+          return resolve({
+            id: 'sess-mock-1',
+            title: 'Aide sur le module Economat',
+            is_active: true,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            messages: [
+              {
+                id: 'msg-mock-1',
+                role: 'user',
+                content: 'Comment configurer un article ?',
+                created_at: new Date().toISOString(),
+              },
+              {
+                id: 'msg-mock-2',
+                role: 'assistant',
+                content:
+                  "Pour configurer un article dans Economat, rendez-vous dans le menu 'Articles', cliquez sur 'Nouveau' et renseignez le code, la désignation et le prix unitaire.",
+                sources: [{ document_title: 'Guide Utilisateur Economat', page: 12 }],
+                intent: 'rag',
+                created_at: new Date().toISOString(),
+              },
+            ],
+          } as T);
+        }
+        if (url === '/ai/chat/') {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          let bodyObj: any = {};
+          try {
+            if (options.body) bodyObj = JSON.parse(String(options.body));
+          } catch {
+            // ignore
+          }
+          return resolve({
+            session_id: bodyObj.session_id || 'sess-mock-1',
+            session_title: 'Discussion avec Assistant IA',
+            answer: `Bonjour ! Concernant votre demande « ${bodyObj.message || '...' } », vous pouvez effectuer cette action directement depuis l'interface ou consulter la documentation dédiée dans l'onglet Documents.`,
+            sources: [{ document_title: 'Guide de démarrage ENT', page: 1 }],
+            suggested_questions: ['Comment inviter un utilisateur ?', 'Comment révoquer un accès ?'],
+            intent: 'rag',
+            processing_time_ms: 120,
+            cached: false,
+          } as T);
+        }
+        if (url === '/ai/stats/') {
+          return resolve({
+            total_sessions: 42,
+            total_messages: 185,
+            refusal_rate_pct: 2.5,
+            avg_processing_time_ms: 350,
+            top_platforms: [
+              { platform: 'Economat', count: 85 },
+              { platform: 'Facturation', count: 60 },
+            ],
+            unanswered_questions_sample: ['Comment connecter une imprimante thermique ?'],
+          } as T);
+        }
+
         // Fallback
         return resolve({} as T);
       }, 30);

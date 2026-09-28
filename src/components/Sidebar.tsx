@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   LayoutDashboard, Building2, Users, AppWindow, KeyRound, FileText,
-  ScrollText, Bell, LogOut, X, ChevronDown, ChevronRight, Megaphone,
+  ScrollText, Bell, LogOut, X, ChevronDown, ChevronRight, Megaphone, Bot,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -34,6 +34,7 @@ const getMenuSections = (): MenuSection[] => [
     collapsible: false,
     items: [
       { icon: LayoutDashboard, label: 'Tableau de Bord', page: 'dashboard', link: '/dashboard' },
+      { icon: Bot, label: 'Assistant IA', page: 'ai-assistant', link: '/ai-assistant' },
     ],
   },
   {

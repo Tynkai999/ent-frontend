@@ -3,9 +3,11 @@ import type { Paginated } from './types';
 import { apiService } from './api.service';
 
 export const documentService = {
-  list: (params = '') => apiService.get<Paginated<Document>>(`/documents/${params}`),
+  list: (params = '') => apiService.get<Paginated<Document>>(`/documents/${params ? (params.startsWith('?') ? params : `?${params}`) : ''}`),
+  get: (id: string) => apiService.get<Document>(`/documents/${id}/`),
   create: (data: Partial<Document>) => apiService.post<Document>('/documents/', data),
   update: (id: string, data: Partial<Document>) => apiService.patch<Document>(`/documents/${id}/`, data),
+  replace: (id: string, data: Partial<Document>) => apiService.put<Document>(`/documents/${id}/`, data),
   remove: (id: string) => apiService.delete(`/documents/${id}/`),
   uploadVersion: (documentId: string, file: File, versionLabel: string, changelog = '') => {
     const formData = new FormData();
@@ -15,4 +17,14 @@ export const documentService = {
     formData.append('file', file);
     return apiService.postFormData<DocumentVersion>('/document-versions/', formData);
   },
+};
+
+export const documentVersionService = {
+  list: (documentId?: string, params = '') => {
+    const q = documentId ? `document=${documentId}${params ? `&${params}` : ''}` : params;
+    return apiService.get<Paginated<DocumentVersion>>(`/document-versions/${q ? `?${q}` : ''}`);
+  },
+  get: (id: string) => apiService.get<DocumentVersion>(`/document-versions/${id}/`),
+  create: (formData: FormData) => apiService.postFormData<DocumentVersion>('/document-versions/', formData),
+  remove: (id: string) => apiService.delete(`/document-versions/${id}/`),
 };

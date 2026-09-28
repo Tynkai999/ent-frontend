@@ -16,6 +16,7 @@ import AccessGrantsPage from './pages/admin/AccessGrantsPage';
 import DemosPage from './pages/admin/DemosPage';
 import DocumentsPage from './pages/admin/DocumentsPage';
 import AuditLogPage from './pages/admin/AuditLogPage';
+import AiAssistantPage from './pages/AiAssistantPage';
 
 function App() {
   return (
@@ -30,6 +31,7 @@ function App() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/profil" element={<ProfilePage />} />
             <Route path="/notifications" element={<NotificationsPage />} />
+            <Route path="/ai-assistant" element={<AiAssistantPage />} />
 
             <Route element={<RoleRoute roles={['super_admin']} />}>
               <Route path="/organizations" element={<OrganizationsPage />} />
