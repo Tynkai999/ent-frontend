@@ -73,6 +73,12 @@ class ApiService {
     // pour absorber la latence réseau de l'appel de refresh lui-même.
     const delay = expiryMs - Date.now() - 5000;
     if (delay <= 0) {
+      // Tolérance d'horloge : si le token est récent (moins de 2 minutes),
+      // ne pas tenter un refresh immédiat pour éviter d'invalider une session valide
+      if (expiryMs > Date.now() - 120000) {
+        this.expiryTimer = setTimeout(() => this.tryRefresh().catch(() => undefined), 30000);
+        return;
+      }
       this.tryRefresh().catch(() => undefined);
       return;
     }
@@ -139,10 +145,11 @@ class ApiService {
   }
 
   private handleUnauthorized(): void {
-    this.clearTokens();
-    if (window.location.pathname !== '/login') {
-      window.location.href = '/login';
+    if (window.location.pathname === '/login') {
+      return;
     }
+    this.clearTokens();
+    window.location.href = '/login';
   }
 
   private getFallbackMessage(status: number): string {
@@ -580,7 +587,9 @@ class ApiService {
         const refreshed = await this.tryRefresh();
         if (refreshed) return this.request<T>(endpoint, options, true);
       }
-      this.handleUnauthorized();
+      if (endpoint !== '/me/' && !endpoint.startsWith('/me')) {
+        this.handleUnauthorized();
+      }
       throw new Error('Session expirée. Veuillez vous reconnecter.');
     }
 

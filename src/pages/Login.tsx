@@ -82,8 +82,11 @@ const Login: React.FC = () => {
     setError('');
     setSubmitting(true);
     try {
-      await authService.loginWithCredentials(username, password);
-      await refresh();
+      const authenticatedUser = await authService.loginWithCredentials(username, password);
+      await refresh(authenticatedUser);
+      if (!authService.isAuthenticated()) {
+        throw new Error("L'authentification a échoué (aucun jeton valide reçu).");
+      }
       navigate('/dashboard', { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Échec de la connexion.');
@@ -280,6 +283,18 @@ const Login: React.FC = () => {
                   </code>
                 </p>
               </div>
+
+              {window.location.origin !== 'https://ent.tpe.bf' && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800 space-y-1">
+                  <p className="font-semibold flex items-center gap-1.5 text-amber-900">
+                    <AlertCircle size={14} className="text-amber-600" />
+                    Environnement local détecté ({window.location.origin})
+                  </p>
+                  <p className="text-amber-700 leading-relaxed">
+                    La redirection SSO Keycloak exige une URL de redirection autorisée (<code className="bg-amber-100 px-1 py-0.5 rounded font-mono">https://ent.tpe.bf</code>). En local, veuillez utiliser l'onglet <strong>Identifiants (ent.tpe.bf)</strong> pour vous connecter directement avec vos accès.
+                  </p>
+                </div>
+              )}
 
               <button
                 onClick={handleKeycloakLogin}

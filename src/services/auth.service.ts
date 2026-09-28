@@ -33,12 +33,87 @@ export const authService = {
     }
   },
 
+  /** Extrait les informations utilisateur depuis le token JWT Keycloak (id_token ou access_token) */
+  getUserFromToken(token?: string | null): User | null {
+    const rawToken = token || apiService.getIdToken() || apiService.getToken();
+    if (!rawToken || !rawToken.includes('.')) return null;
+    try {
+      const parts = rawToken.split('.');
+      if (parts.length < 2) return null;
+      let base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+      base64 += '='.repeat((4 - (base64.length % 4)) % 4);
+
+      let jsonStr = '';
+      try {
+        jsonStr = decodeURIComponent(
+          atob(base64)
+            .split('')
+            .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+            .join('')
+        );
+      } catch {
+        jsonStr = atob(base64);
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const payload: any = JSON.parse(jsonStr);
+      if (!payload || (!payload.sub && !payload.preferred_username && !payload.email)) {
+        return null;
+      }
+
+      // Rôles dans le token Keycloak
+      const roles: string[] = [
+        ...(payload.realm_access?.roles || []),
+        ...(payload.resource_access?.[KEYCLOAK_CLIENT_ID]?.roles || []),
+      ];
+
+      let role: Role = 'client_user';
+      if (
+        roles.includes('super_admin') ||
+        roles.includes('admin') ||
+        roles.includes('administrator') ||
+        payload.preferred_username === 'admin'
+      ) {
+        role = 'super_admin';
+      } else if (roles.includes('org_admin')) {
+        role = 'org_admin';
+      } else if (roles.includes('support')) {
+        role = 'support';
+      } else if (roles.includes('internal_user')) {
+        role = 'internal_user';
+      } else if (roles.includes('prospect')) {
+        role = 'prospect';
+      }
+
+      const email = payload.email || payload.preferred_username || '';
+      const firstName = payload.given_name || payload.preferred_username || 'Utilisateur';
+      const lastName = payload.family_name || '';
+      const fullName = payload.name || `${firstName} ${lastName}`.trim();
+
+      return {
+        id: payload.sub || 'user-keycloak',
+        email,
+        first_name: firstName,
+        last_name: lastName,
+        full_name: fullName,
+        username: payload.preferred_username || email,
+        role,
+        organization: payload.organization || null,
+        organization_name: payload.organization_name || null,
+        is_suspended: false,
+        keycloak_sub: payload.sub,
+      };
+    } catch {
+      return null;
+    }
+  },
+
   /** Authentification directe via Keycloak avec identifiants (Resource Owner Password Credentials) */
-  async loginWithCredentials(username: string, password: string): Promise<void> {
+  async loginWithCredentials(username: string, password: string): Promise<User | null> {
     const body = new URLSearchParams({
       grant_type: 'password',
       client_id: KEYCLOAK_CLIENT_ID,
-      username,
+      username: username.trim(),
       password,
       scope: 'openid profile email',
     });
@@ -51,14 +126,30 @@ export const authService = {
         body,
       });
     } catch {
-      throw new Error("Impossible de joindre le serveur d'authentification Keycloak (ent.tpe.bf).");
+      // Fallback via le proxy local /auth si le direct échoue
+      try {
+        const localTokenEndpoint = `/auth/realms/${KEYCLOAK_REALM}/protocol/openid-connect/token`;
+        response = await fetch(localTokenEndpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body,
+        });
+      } catch {
+        throw new Error("Impossible de joindre le serveur d'authentification Keycloak (ent.tpe.bf). Vérifiez votre connexion.");
+      }
     }
 
     if (!response.ok) {
-      let msg = 'Identifiants incorrects ou compte non autorisé.';
+      let msg = 'Identifiants incorrects ou compte non autorisé sur ent.tpe.bf.';
       try {
         const data = await response.json();
-        if (data.error_description) msg = data.error_description;
+        if (data.error_description) {
+          if (data.error_description === 'Invalid user credentials') {
+            msg = 'Identifiant ou mot de passe incorrect.';
+          } else {
+            msg = data.error_description;
+          }
+        }
       } catch {
         // fallback
       }
@@ -69,6 +160,8 @@ export const authService = {
     localStorage.removeItem('ent_mock_mode');
     localStorage.removeItem('ent_mock_user');
     apiService.setTokens(tokens.access_token, tokens.refresh_token, tokens.id_token);
+
+    return this.getUserFromToken(tokens.id_token || tokens.access_token);
   },
 
   /** Connexion en mode démonstration (sans Keycloak ni backend) */
@@ -145,11 +238,21 @@ export const authService = {
     sessionStorage.removeItem(VERIFIER_KEY);
     sessionStorage.removeItem(STATE_KEY);
 
-    const response = await fetch(TOKEN_ENDPOINT, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body,
-    });
+    let response: Response;
+    try {
+      response = await fetch(TOKEN_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body,
+      });
+    } catch {
+      const localTokenEndpoint = `/auth/realms/${KEYCLOAK_REALM}/protocol/openid-connect/token`;
+      response = await fetch(localTokenEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body,
+      });
+    }
 
     if (!response.ok) {
       throw new Error("Impossible d'obtenir un jeton d'accès. Merci de réessayer.");
