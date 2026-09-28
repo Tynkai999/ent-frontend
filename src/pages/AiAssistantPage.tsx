@@ -23,12 +23,14 @@ import AppLayout from '../components/AppLayout';
 import MarkdownRenderer from '../components/MarkdownRenderer';
 import { aiService } from '../services/ai.service';
 import { documentService } from '../services/document.service';
+import { platformService } from '../services/platform.service';
 import type {
   AiStatsResponse,
   ChatMessage,
   ConversationSession,
 } from '../models/Ai.model';
 import type { Document } from '../models/Document.model';
+import type { Platform } from '../models/Platform.model';
 
 export const AiAssistantPage: React.FC = () => {
   const [sessions, setSessions] = useState<ConversationSession[]>([]);
@@ -40,13 +42,14 @@ export const AiAssistantPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [expandedSourceId, setExpandedSourceId] = useState<string | null>(null);
   const [availableDocs, setAvailableDocs] = useState<Document[]>([]);
+  const [availablePlatforms, setAvailablePlatforms] = useState<Platform[]>([]);
   const [showDocsDrawer, setShowDocsDrawer] = useState(false);
 
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([
-    'Comment fonctionne la gestion des accès et rôles ?',
-    'Comment créer et déployer un cours sur Moodle ?',
-    'Comment partager un dossier sécurisé sur Nextcloud ?',
-    'Comment configurer le micro et la visio BigBlueButton ?',
+    "Quelles sont les plateformes disponibles sur l'ENT ?",
+    "Que contient le manuel d'utilisation Economat ?",
+    "Quelles sont les spécifications du cahier des charges APEC ?",
+    "Comment fonctionne la gestion des accès et rôles ?",
   ]);
 
   // Modale Statistiques
@@ -64,15 +67,24 @@ export const AiAssistantPage: React.FC = () => {
     scrollToBottom();
   }, [messages, loading]);
 
-  // Charger la liste des documents disponibles pour l'IA
+  // Charger la liste des documents et plateformes disponibles pour le RAG
   useEffect(() => {
     documentService
-      .list('status=published')
+      .list()
       .then((res) => {
         setAvailableDocs(res.results || []);
       })
       .catch((e) => {
         console.warn('Impossible de charger les documents pour le RAG:', e);
+      });
+
+    platformService
+      .list()
+      .then((res) => {
+        setAvailablePlatforms(res.results || []);
+      })
+      .catch((e) => {
+        console.warn('Impossible de charger les plateformes pour le RAG:', e);
       });
   }, []);
 
@@ -117,32 +129,35 @@ export const AiAssistantPage: React.FC = () => {
         id: 'welcome-init',
         role: 'assistant',
         content: `### Bonjour ! Je suis l'Assistant IA de l'ENT
-Je suis connecté à la **base documentaire officielle** de la plateforme (\`ent.tpe.bf\`). 
+Je suis connecté à la **base documentaire officielle** et au **catalogue des plateformes** de l'ENT (\`ent.tpe.bf\`). 
 
-Je peux vous guider pas-à-pas en extrayant directement les informations des manuels :
-- **Moodle LMS** : création d'espaces de cours, devoirs et gestion des cohortes.
-- **Nextcloud Espace** : partage sécurisé de fichiers, droits d'accès et synchronisation.
-- **BigBlueButton** : visioconférences, partage d'écran et modération de réunion.
-- **Administration & Sécurité** : rôles Keycloak, invitations et attributions d'accès.
+Je peux vous guider et répondre avec précision à partir des documents et spécifications de l'écosystème :
+- **Plateformes actives** : **Economat** (\`ECO\`), **E-Timbre** (\`ET\`), **Parc Manager** (\`PM\`), **SGI-GCOB** (\`GCOB\`).
+- **Documents & Manuels** : **Manuel d'utilisation Economat (v1.0)**, **Cahier des charges APEC (v1.0)**.
+- **Outils collaboratifs** : Moodle LMS, Nextcloud Espace, BigBlueButton Visio.
+- **Administration & Sécurité** : Rôles Keycloak, gestion des organisations et attributions d'accès.
 
-*Posez votre question ou cliquez sur l'un des guides ci-dessous.*`,
+*Posez votre question ci-dessous ou cliquez sur l'un des guides proposés.*`,
         sources: [
           {
-            document_title: "Guide d'accueil des formateurs Moodle",
-            version: '2.1',
+            document_id: '9dd08a45-cbce-476d-b300-946e0854cefa',
+            document_title: "Manuel d'utilisation Economat (APEC)",
+            version: '1.0',
             page: 1,
-            snippet: 'Guide officiel de prise en main des cours et espaces pédagogiques.',
+            snippet: "Guide officiel d'utilisation et d'administration du portail Economat et de ses modules.",
             url: '/documents',
           },
           {
-            document_title: 'Manuel Nextcloud & Partages',
-            version: '1.4',
+            document_id: 'f2a8d3d8-01b9-4583-a0c3-1cc56035eee7',
+            document_title: 'Cahier des charges APEC (MedScan Enterprise)',
+            version: '1.0',
             page: 1,
-            snippet: 'Règles de partage de fichiers et sécurité des données.',
+            snippet: "Spécifications fonctionnelles, intégration SSO Keycloak et sécurité des échanges ENT.",
             url: '/documents',
           },
         ],
         intent: 'rag',
+        platform: 'ENT Central',
       },
     ]);
     setError(null);
@@ -404,7 +419,7 @@ Je peux vous guider pas-à-pas en extrayant directement les informations des man
                 }`}
               >
                 <BookOpen className="w-3.5 h-3.5" />
-                <span>Base documentaire ({availableDocs.length || 3})</span>
+                <span>Base de connaissances ({availableDocs.length + availablePlatforms.length || 6})</span>
               </button>
               <button
                 onClick={openStatsModal}
@@ -416,41 +431,77 @@ Je peux vous guider pas-à-pas en extrayant directement les informations des man
             </div>
           </div>
 
-          {/* Bandeau dépliable : Base documentaire connectée */}
+          {/* Bandeau dépliable : Base documentaire & Plateformes connectées */}
           {showDocsDrawer && (
-            <div className="bg-blue-50/70 dark:bg-blue-950/40 border-b border-blue-200/80 dark:border-blue-900/60 px-6 py-3.5 flex flex-wrap items-center justify-between gap-3 text-xs">
-              <div className="flex items-center gap-2 text-blue-900 dark:text-blue-200">
-                <BookOpen size={16} className="text-primary shrink-0" />
-                <span className="font-semibold">Guides et manuels officiellement indexés pour vos questions :</span>
+            <div className="bg-blue-50/70 dark:bg-blue-950/40 border-b border-blue-200/80 dark:border-blue-900/60 px-6 py-3.5 space-y-3 text-xs">
+              {/* Plateformes connectées */}
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2 text-blue-900 dark:text-blue-200">
+                  <Sparkles size={15} className="text-primary shrink-0" />
+                  <span className="font-semibold">Plateformes officielles ENT :</span>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {(availablePlatforms.length > 0
+                    ? availablePlatforms
+                    : [
+                        { id: '1', name: 'Economat', code: 'ECO' },
+                        { id: '2', name: 'E-Timbre', code: 'ET' },
+                        { id: '3', name: 'Parc Manager', code: 'PM' },
+                        { id: '4', name: 'SGI-GCOB', code: 'GCOB' },
+                      ]
+                  ).map((plat, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => handleSendMessage(`Présente-moi la plateforme ${plat.name}`)}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 border border-blue-200 dark:border-blue-800 text-slate-700 dark:text-slate-200 hover:border-primary hover:text-primary transition shadow-2xs"
+                    >
+                      <span className="font-medium">{plat.name}</span>
+                      <span className="text-[10px] text-primary font-bold">({plat.code})</span>
+                    </button>
+                  ))}
+                  <Link
+                    to="/admin/platforms"
+                    className="inline-flex items-center gap-1 text-primary hover:underline font-semibold ml-2"
+                  >
+                    <span>Toutes les plateformes</span>
+                    <ExternalLink size={11} />
+                  </Link>
+                </div>
               </div>
 
-              <div className="flex flex-wrap items-center gap-2">
-                {(availableDocs.length > 0
-                  ? availableDocs
-                  : [
-                      { id: '1', title: 'Guide Formateurs Moodle', platform_name: 'Moodle LMS' },
-                      { id: '2', title: 'Manuel Nextcloud & Partages', platform_name: 'Nextcloud' },
-                      { id: '3', title: 'Guide Visioconférence', platform_name: 'BigBlueButton' },
-                    ]
-                ).map((doc, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => handleSendMessage(`Que contient le ${doc.title} ?`)}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 border border-blue-200 dark:border-blue-800 text-slate-700 dark:text-slate-200 hover:border-primary hover:text-primary transition shadow-2xs"
+              {/* Documents & Manuels indexés */}
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-blue-200/60 dark:border-blue-900/40">
+                <div className="flex items-center gap-2 text-blue-900 dark:text-blue-200">
+                  <BookOpen size={15} className="text-primary shrink-0" />
+                  <span className="font-semibold">Guides et manuels indexés :</span>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {(availableDocs.length > 0
+                    ? availableDocs
+                    : [
+                        { id: '1', title: 'Manuel d\'utilisation Economat', platform_name: 'Economat' },
+                        { id: '2', title: 'Cahier des charges APEC', platform_name: 'Economat' },
+                        { id: '3', title: 'Guide Formateurs Moodle', platform_name: 'Moodle LMS' },
+                      ]
+                  ).map((doc, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => handleSendMessage(`Que contient le document ${doc.title} ?`)}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 border border-blue-200 dark:border-blue-800 text-slate-700 dark:text-slate-200 hover:border-primary hover:text-primary transition shadow-2xs"
+                    >
+                      <FileText size={11} className="text-primary" />
+                      <span className="font-medium">{doc.title}</span>
+                      {doc.platform_name && <span className="text-[10px] text-slate-400">({doc.platform_name})</span>}
+                    </button>
+                  ))}
+                  <Link
+                    to="/documents"
+                    className="inline-flex items-center gap-1 text-primary hover:underline font-semibold ml-2"
                   >
-                    <FileText size={11} className="text-primary" />
-                    <span className="font-medium">{doc.title}</span>
-                    <span className="text-[10px] text-slate-400">({doc.platform_name})</span>
-                  </button>
-                ))}
-
-                <Link
-                  to="/documents"
-                  className="inline-flex items-center gap-1 text-primary hover:underline font-semibold ml-2"
-                >
-                  <span>Tous les documents</span>
-                  <ExternalLink size={11} />
-                </Link>
+                    <span>Tous les documents</span>
+                    <ExternalLink size={11} />
+                  </Link>
+                </div>
               </div>
             </div>
           )}

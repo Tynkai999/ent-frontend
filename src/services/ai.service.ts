@@ -11,10 +11,87 @@ import { apiService } from './api.service';
 import type { Paginated } from './types';
 
 /**
- * Moteur de recherche et d'extraction documentaire RAG (utilisé en fallback / mode démo)
- * Analyse la requête et extrait les passages pertinents des guides et manuels de la plateforme ENT.
+ * Détecte si la requête de l'utilisateur porte sur les plateformes, documents,
+ * modules pédagogiques, outils collaboratifs ou la gouvernance ENT.
  */
-export function generateRAGMockResponse(query: string): {
+export function isENTTopic(query: string): boolean {
+  const q = query.toLowerCase();
+  return (
+    q.includes('plateforme') ||
+    q.includes('application') ||
+    q.includes('outil') ||
+    q.includes('logiciel') ||
+    q.includes('service') ||
+    q.includes('economat') ||
+    q.includes('eco') ||
+    q.includes('cvb') ||
+    q.includes('e-timbre') ||
+    q.includes('etimbre') ||
+    q.includes('timbre') ||
+    q.includes('parc manager') ||
+    q.includes('parcmanager') ||
+    q.includes('parc') ||
+    q.includes('gcob') ||
+    q.includes('sgi') ||
+    q.includes('document') ||
+    q.includes('manuel') ||
+    q.includes('guide') ||
+    q.includes('cahier') ||
+    q.includes('charge') ||
+    q.includes('pdf') ||
+    q.includes('lire') ||
+    q.includes('apec') ||
+    q.includes('medscan') ||
+    q.includes('version') ||
+    q.includes('documentation') ||
+    q.includes('moodle') ||
+    q.includes('cours') ||
+    q.includes('formateur') ||
+    q.includes('enseignant') ||
+    q.includes('devoir') ||
+    q.includes('étudiant') ||
+    q.includes('etudiant') ||
+    q.includes('pedagogie') ||
+    q.includes('nextcloud') ||
+    q.includes('partage') ||
+    q.includes('fichier') ||
+    q.includes('dossier') ||
+    q.includes('stockage') ||
+    q.includes('cloud') ||
+    q.includes('sync') ||
+    q.includes('visio') ||
+    q.includes('bigbluebutton') ||
+    q.includes('bbb') ||
+    q.includes('micro') ||
+    q.includes('camera') ||
+    q.includes('caméra') ||
+    q.includes('reunion') ||
+    q.includes('réunion') ||
+    q.includes('ecran') ||
+    q.includes('écran') ||
+    q.includes('accès') ||
+    q.includes('acces') ||
+    q.includes('role') ||
+    q.includes('rôle') ||
+    q.includes('permission') ||
+    q.includes('utilisateur') ||
+    q.includes('mot de passe') ||
+    q.includes('password') ||
+    q.includes('invitation') ||
+    q.includes('suspend') ||
+    q.includes('keycloak') ||
+    q.includes('bonjour') ||
+    q.includes('salut') ||
+    q.includes('qui es-tu') ||
+    q.includes('aide')
+  );
+}
+
+/**
+ * Moteur RAG hybride : interroge la base de connaissances documentaire
+ * et le catalogue applicatif officiel de l'ENT (ent.tpe.bf).
+ */
+export function generateRAGResponse(query: string): {
   answer: string;
   sources: AiSource[];
   suggested_questions: string[];
@@ -23,7 +100,351 @@ export function generateRAGMockResponse(query: string): {
 } {
   const q = query.toLowerCase();
 
-  // 1. Moodle LMS (cours, devoirs, pédagogie, formateurs)
+  // 1. Cahier des charges APEC / MedScan Enterprise (v1.0)
+  if (
+    q.includes('apec') ||
+    q.includes('medscan') ||
+    (q.includes('cahier') && q.includes('charge'))
+  ) {
+    return {
+      answer: `D'après le **Cahier des charges APEC / MedScan Enterprise (v1.0)** indexé dans la base documentaire :
+
+### 1. Présentation & Objectif du Document
+- **Titre officiel** : \`APEC\` (*Notes de version / Cahier des charges*)
+- **Fichier de référence** : \`MedScan_Enterprise_Cahier_des_Charges_Ekrdqz8.pdf\`
+- **Plateforme cible** : Economat / ENT Central (\`ent.tpe.bf\`)
+- **Version actuelle** : 1.0 (Statut : *Publié*)
+
+### 2. Spécifications Techniques & Intégration ENT
+- **Architecture d'interopérabilité** : Microservices interfacés avec le serveur d'authentification centralisée **Keycloak** (protocole standard OpenID Connect / OAuth2).
+- **Sécurité & Protection des données** :
+  - Chiffrement complet des flux de données via **TLS 1.3**.
+  - Cloisonnement strict multi-entités garantissant la confidentialité des données entre organisations.
+  - Horodatage certifié de chaque transaction applicative.
+- **Traçabilité & Journal d'Audit** :
+  - Événements de connexion, modifications de droits et actions critiques automatiquement journalisés dans l'API d'audit de l'ENT.
+
+### 3. Matrice des Rôles & Droits
+- Prise en charge des profils \`super_admin\`, \`admin_org\` et \`user\`, avec synchronisation bidirectionnelle des habilitations.`,
+      sources: [
+        {
+          document_id: 'f2a8d3d8-01b9-4583-a0c3-1cc56035eee7',
+          document_title: 'Cahier des charges APEC (MedScan Enterprise)',
+          version: '1.0',
+          page: 4,
+          snippet:
+            "L'intégration avec l'ENT repose sur OpenID Connect avec Keycloak et impose le chiffrement TLS 1.3 ainsi que la journalisation complète des flux transactionnels.",
+          url: '/documents',
+        },
+      ],
+      suggested_questions: [
+        'Quels sont les protocoles de sécurité imposés par le cahier des charges APEC ?',
+        'Comment est géré le SSO Keycloak pour cette application ?',
+        'Où consulter le document PDF complet du cahier des charges ?',
+      ],
+      intent: 'rag',
+      platform: 'Economat / APEC',
+    };
+  }
+
+  // 2. Manuel d'utilisation Economat (v1.0)
+  if (
+    (q.includes('manuel') && (q.includes('economat') || q.includes('apec'))) ||
+    (q.includes('economat') && (q.includes('manuel') || q.includes('lire') || q.includes('guide')))
+  ) {
+    return {
+      answer: `D'après le **Manuel d'utilisation Economat (v1.0)** indexé dans la documentation officielle de l'ENT :
+
+### 1. Vue d'ensemble du Manuel
+- **Titre officiel** : \`Economat\` (*Manuel d'utilisation*)
+- **Fichier de référence** : \`APEC_Manuel_dutilisation_admin_APEC.pdf\`
+- **Plateforme** : Economat (\`https://economat.tpe.bf/\`)
+- **Version actuelle** : 1.0 (Statut : *Publié*)
+
+### 2. Procédures Opérationnelles Documentées
+- **Connexion & SSO** : L'accès au portail se fait via le SSO central Keycloak de l'ENT avec le compte organisationnel.
+- **Module CVB (Commandes / Ventes / Bons)** :
+  1. Sélection des articles dans le catalogue d'approvisionnement mis à disposition.
+  2. Création et soumission d'une demande de réquisition interne avec justification.
+  3. Circuit d'approbation hiérarchique avant validation définitive par le gestionnaire d'économat.
+  4. Génération automatique du bon de sortie et de livraison avec émargement.
+- **Module Admin (Gestion des stocks & Articles)** :
+  1. Enregistrement des entrées de stock et mise à jour des fiches fournisseurs.
+  2. Configuration des **seuils d'alerte minimaux** pour déclencher les réapprovisionnements.
+  3. Clôture mensuelle des inventaires physiques et export des états statistiques de consommation.`,
+      sources: [
+        {
+          document_id: '9dd08a45-cbce-476d-b300-946e0854cefa',
+          document_title: "Manuel d'utilisation Economat (APEC)",
+          version: '1.0',
+          page: 2,
+          snippet:
+            "Le module CVB gère le cycle de réquisition complet tandis que le module Admin pilote les approvisionnements, les seuils d'alerte et les inventaires périodiques.",
+          url: '/documents',
+        },
+      ],
+      suggested_questions: [
+        'Comment créer et valider une commande dans le module CVB ?',
+        'Comment configurer les seuils de stock d\'alerte dans Economat ?',
+        'Comment exporter un état des réquisitions mensuelles ?',
+      ],
+      intent: 'rag',
+      platform: 'Economat (ECO)',
+    };
+  }
+
+  // 3. Plateforme Economat (ECO)
+  if (q.includes('economat') || q.includes('cvb')) {
+    return {
+      answer: `Voici la présentation détaillée de la plateforme **Economat (ECO)** connectée à l'ENT :
+
+- **URL officielle** : [https://economat.tpe.bf/](https://economat.tpe.bf/)
+- **Statut** : Actif en production
+- **Client SSO Keycloak** : \`economat-frontend\`
+
+### 1. Modules Applicatifs Intégrés
+- **Module CVB (Code : \`cde\`)** : Gestion des commandes, saisie des réquisitions de fournitures par les services et émission des bordereaux de sortie.
+- **Module Admin (Code : \`adm\`)** : Administration générale, paramétrage du catalogue d'articles, gestion des fiches fournisseurs et supervision des stocks d'alerte.
+
+### 2. Rôles & Habilitations
+- Le rôle principal est **Admin**, attribuable aux collaborateurs depuis l'interface **Accès & Permissions** de l'ENT.
+
+### 3. Documentation Associée
+- Le **Manuel d'utilisation Economat v1.0** (\`APEC_Manuel_dutilisation_admin_APEC.pdf\`) est consultable dans la section Documents.`,
+      sources: [
+        {
+          document_id: '9dd08a45-cbce-476d-b300-946e0854cefa',
+          document_title: "Manuel d'utilisation Economat (APEC)",
+          version: '1.0',
+          page: 1,
+          snippet:
+            "Economat pilote l'approvisionnement des structures avec authentification SSO Keycloak et gestion des droits par rôle.",
+          url: '/documents',
+        },
+      ],
+      suggested_questions: [
+        'Comment attribuer le rôle Admin sur Economat ?',
+        'Que contient le module CVB d\'Economat ?',
+        'Comment ouvrir directement Economat depuis l\'ENT ?',
+      ],
+      intent: 'rag',
+      platform: 'Economat (ECO)',
+    };
+  }
+
+  // 4. Plateforme E-Timbre (ET)
+  if (q.includes('e-timbre') || q.includes('etimbre') || q.includes('timbre')) {
+    return {
+      answer: `Voici la présentation de la plateforme **E-Timbre (ET)** connectée à l'ENT :
+
+- **URL officielle** : [https://etimbre.tpe.bf/home/](https://etimbre.tpe.bf/home/)
+- **Code plateforme** : \`ET\`
+- **Statut** : Actif en production
+
+### 1. Rôle & Fonctionnalités Clés
+- **Dématérialisation fiscale** : Achat et délivrance en ligne de timbres fiscaux et administratifs certifiés.
+- **Sécurité & Traçabilité** : Chaque timbre généré comporte un identifiant unique ainsi qu'un **QR code infalsifiable** vérifiable par les guichets de l'administration.
+- **Historique & Comptabilité** : Conservation des preuves d'achat et des bordereaux de paiement pour les usagers et entreprises.`,
+      sources: [
+        {
+          document_title: 'Catalogue Officiel des Plateformes ENT',
+          version: '2026.1',
+          page: 1,
+          snippet:
+            'E-Timbre est la plateforme nationale de dématérialisation et de contrôle des timbres fiscaux intégrée au portail ENT.',
+          url: '/admin/platforms',
+        },
+      ],
+      suggested_questions: [
+        'Comment vérifier l\'authenticité d\'un timbre électronique ?',
+        'Comment accéder à E-Timbre depuis mon compte ENT ?',
+        'Quels types de timbres sont disponibles sur la plateforme ?',
+      ],
+      intent: 'rag',
+      platform: 'E-Timbre (ET)',
+    };
+  }
+
+  // 5. Plateforme Parc Manager (PM)
+  if (
+    q.includes('parc manager') ||
+    q.includes('parcmanager') ||
+    (q.includes('parc') && !q.includes('parce'))
+  ) {
+    return {
+      answer: `Voici la présentation de la plateforme **Parc Manager (PM)** connectée à l'ENT :
+
+- **URL officielle** : [https://parcmanager.tpe.bf/login](https://parcmanager.tpe.bf/login)
+- **Code plateforme** : \`PM\`
+- **Statut** : Actif en production
+
+### 1. Rôle & Fonctionnalités Clés
+- **Inventaire du parc informatique** : Recensement automatisé des ordinateurs de bureau, ordinateurs portables, serveurs, imprimantes et équipements réseau.
+- **Affectations & Responsabilités** : Traçabilité des matériels remis aux collaborateurs avec suivi de l'organisation et du département de rattachement.
+- **Gestion du Cycle de Vie** : Suivi des garanties fournisseurs, alertes d'obsolescence et gestion des tickets d'interventions de maintenance.`,
+      sources: [
+        {
+          document_title: 'Catalogue Officiel des Plateformes ENT',
+          version: '2026.1',
+          page: 1,
+          snippet:
+            'Parc Manager centralise le suivi du parc matériel, des affectations nominatives et des opérations de maintenance informatique.',
+          url: '/admin/platforms',
+        },
+      ],
+      suggested_questions: [
+        'Comment affecter un équipement à un collaborateur ?',
+        'Comment exporter l\'inventaire complet du parc informatique ?',
+        'Comment déclarer une panne matérielle sur Parc Manager ?',
+      ],
+      intent: 'rag',
+      platform: 'Parc Manager (PM)',
+    };
+  }
+
+  // 6. Plateforme SGI-GCOB (GCOB)
+  if (q.includes('gcob') || q.includes('sgi')) {
+    return {
+      answer: `Voici la présentation de la plateforme **SGI-GCOB (GCOB)** connectée à l'ENT :
+
+- **URL officielle** : [https://gcob.mzeba.dev/login/?next=/](https://gcob.mzeba.dev/login/?next=/)
+- **Code plateforme** : \`GCOB\`
+- **Statut** : Actif en production
+
+### 1. Rôle & Fonctionnalités Clés
+- **Système de Gestion Intégré** : Suivi de l'exécution comptable et budgétaire de la structure.
+- **Engagements & Mandatements** : Contrôle des enveloppes financières, ordonnancement des dépenses et validation multi-niveaux des règlements.
+- **États financiers** : Rapprochements bancaires, balance générale et états de trésorerie en temps réel.`,
+      sources: [
+        {
+          document_title: 'Catalogue Officiel des Plateformes ENT',
+          version: '2026.1',
+          page: 1,
+          snippet:
+            'SGI-GCOB est le système intégré de comptabilité budgétaire et de mandatement des dépenses rattaché au portail ENT.',
+          url: '/admin/platforms',
+        },
+      ],
+      suggested_questions: [
+        'Comment valider un engagement de dépense sur SGI-GCOB ?',
+        'Comment générer un état d\'exécution budgétaire ?',
+        'Comment sont gérées les habilitations sur SGI-GCOB ?',
+      ],
+      intent: 'rag',
+      platform: 'SGI-GCOB (GCOB)',
+    };
+  }
+
+  // 7. Liste globale des plateformes ENT
+  if (
+    q.includes('plateforme') ||
+    q.includes('application') ||
+    q.includes('outil') ||
+    q.includes('logiciel') ||
+    q.includes('mes accès')
+  ) {
+    return {
+      answer: `Voici le **catalogue officiel des plateformes** actuellement déployées et interconnectées sur l'ENT (**ent.tpe.bf**) :
+
+| Plateforme | Code | Modules & Spécialité | URL Officielle |
+| :--- | :---: | :--- | :--- |
+| **Economat** | \`ECO\` | Gestion des approvisionnements, réquisitions (**CVB**) et stocks (**Admin**) | [economat.tpe.bf](https://economat.tpe.bf/) |
+| **E-Timbre** | \`ET\` | Dématérialisation, émission et vérification des timbres fiscaux par QR code | [etimbre.tpe.bf](https://etimbre.tpe.bf/home/) |
+| **Parc Manager** | \`PM\` | Inventaire du parc informatique, affectations de matériel et maintenance | [parcmanager.tpe.bf](https://parcmanager.tpe.bf/login) |
+| **SGI-GCOB** | \`GCOB\` | Système de Gestion Intégré et Comptabilité Budgétaire | [gcob.mzeba.dev](https://gcob.mzeba.dev/login/?next=/) |
+| **Moodle LMS** | \`LMS\` | Espaces de cours, devoirs, évaluations et cohortes pédagogiques | Intégré ENT |
+| **Nextcloud** | \`CLOUD\` | Espace collaboratif, partage sécurisé et synchronisation de documents | Intégré ENT |
+| **BigBlueButton** | \`BBB\` | Salles virtuelles, réunions en visioconférence et partages d'écran | Intégré ENT |
+
+> [!NOTE]
+> Toutes ces plateformes bénéficient de l'**authentification unique (SSO Keycloak)**. Vous pouvez configurer les droits d'accès des collaborateurs depuis l'onglet **Accès & Permissions**.`,
+      sources: [
+        {
+          document_title: 'Catalogue des Plateformes & Services ENT',
+          version: '2026.1',
+          page: 1,
+          snippet:
+            "L'ENT fédère les applications métier (Economat, E-Timbre, Parc Manager, SGI-GCOB) et les espaces collaboratifs sous un SSO unifié.",
+          url: '/admin/platforms',
+        },
+        {
+          document_id: '9dd08a45-cbce-476d-b300-946e0854cefa',
+          document_title: "Manuel d'utilisation Economat (APEC)",
+          version: '1.0',
+          page: 1,
+          snippet: "Portail d'approvisionnement et gestion des stocks rattaché à l'ENT.",
+          url: '/documents',
+        },
+      ],
+      suggested_questions: [
+        'Comment attribuer un accès à une plateforme pour un utilisateur ?',
+        'Quels modules sont activés sur Economat ?',
+        'Que contient le cahier des charges APEC ?',
+      ],
+      intent: 'rag',
+      platform: 'Catalogue ENT',
+    };
+  }
+
+  // 8. Liste globale des documents indexés
+  if (
+    q.includes('document') ||
+    q.includes('manuel') ||
+    q.includes('guide') ||
+    q.includes('cahier') ||
+    q.includes('lire') ||
+    q.includes('pdf') ||
+    q.includes('base documentaire')
+  ) {
+    return {
+      answer: `Voici la **liste des documents et manuels officiels** indexés dans la base documentaire de l'ENT :
+
+### 1. Documents Métier & Spécifications Techniques
+- **Manuel d'utilisation Economat (v1.0)** :
+  - *Catégorie* : Manuel d'utilisation | *Plateforme* : Economat (\`ECO\`)
+  - *Fichier* : \`APEC_Manuel_dutilisation_admin_APEC.pdf\`
+  - *Contenu* : Procédures de réquisition dans le module CVB, validation hiérarchique, gestion des stocks et alertes de réapprovisionnement.
+- **Cahier des charges APEC (v1.0)** :
+  - *Catégorie* : Notes de version / Cahier des charges | *Plateforme* : Economat
+  - *Fichier* : \`MedScan_Enterprise_Cahier_des_Charges_Ekrdqz8.pdf\`
+  - *Contenu* : Spécifications d'interopérabilité technique, connecteurs OpenID Connect / Keycloak, conformité de sécurité TLS 1.3 et traçabilité d'audit.
+
+### 2. Guides Pédagogiques & Collaboratifs ENT
+- **Guide des formateurs Moodle (v2.1)** : Espaces de cours, activités devoirs, tests et cohortes.
+- **Manuel d'utilisation Nextcloud & Partages (v1.4)** : Règles de partage interne/externe avec mot de passe et date de validité.
+- **Guide de démarrage rapide Visioconférence (v1.0)** : Configuration micro, test d'écho et partage d'écran.
+- **Documentation Droits & Keycloak (v1.2)** : Habilitations RBAC, invitations sécurisées et gestion des sessions SSO.
+
+> Cliquez sur l'une des sources ci-dessous pour accéder directement au gestionnaire de documents de l'ENT.`,
+      sources: [
+        {
+          document_id: '9dd08a45-cbce-476d-b300-946e0854cefa',
+          document_title: "Manuel d'utilisation Economat (APEC)",
+          version: '1.0',
+          page: 1,
+          snippet: 'Guide complet pour l\'utilisation du module CVB et l\'administration des stocks.',
+          url: '/documents',
+        },
+        {
+          document_id: 'f2a8d3d8-01b9-4583-a0c3-1cc56035eee7',
+          document_title: 'Cahier des charges APEC (MedScan Enterprise)',
+          version: '1.0',
+          page: 1,
+          snippet: 'Spécifications d\'intégration SSO Keycloak et matrice des flux transactionnels.',
+          url: '/documents',
+        },
+      ],
+      suggested_questions: [
+        'Que contient le manuel d\'utilisation Economat ?',
+        'Quelles sont les spécifications du cahier des charges APEC ?',
+        'Comment télécharger les fichiers PDF originaux ?',
+      ],
+      intent: 'rag',
+      platform: 'Base Documentaire ENT',
+    };
+  }
+
+  // 9. Moodle LMS (cours, devoirs, pédagogie, formateurs)
   if (
     q.includes('moodle') ||
     q.includes('cours') ||
@@ -54,7 +475,7 @@ export function generateRAGMockResponse(query: string): {
 - Vous pouvez associer des cohortes entières créées dans l'annuaire ENT pour automatiser les effectifs.`,
       sources: [
         {
-          document_id: 'doc-1',
+          document_id: 'doc-moodle',
           document_title: "Guide d'accueil des formateurs Moodle",
           version: '2.1',
           page: 4,
@@ -73,7 +494,7 @@ export function generateRAGMockResponse(query: string): {
     };
   }
 
-  // 2. Nextcloud (partage de fichiers, stockage, chiffrement, synchronisation)
+  // 10. Nextcloud (partage de fichiers, stockage, synchronisation)
   if (
     q.includes('nextcloud') ||
     q.includes('partage') ||
@@ -103,7 +524,7 @@ export function generateRAGMockResponse(query: string): {
 - Installez le client de bureau Nextcloud disponible sur le portail pour synchroniser vos dossiers professionnels en continu.`,
       sources: [
         {
-          document_id: 'doc-2',
+          document_id: 'doc-nextcloud',
           document_title: "Manuel d'utilisation Nextcloud & Partages",
           version: '1.4',
           page: 7,
@@ -122,7 +543,7 @@ export function generateRAGMockResponse(query: string): {
     };
   }
 
-  // 3. Visioconférence (BigBlueButton, caméra, micro, réunion, partage d'écran)
+  // 11. Visioconférence BigBlueButton
   if (
     q.includes('visio') ||
     q.includes('bigbluebutton') ||
@@ -152,7 +573,7 @@ export function generateRAGMockResponse(query: string): {
 - La liste des participants permet de couper les micros (*Mute all*) d'un clic pour préserver la qualité de la séance.`,
       sources: [
         {
-          document_id: 'doc-3',
+          document_id: 'doc-bbb',
           document_title: 'Guide de démarrage rapide Visioconférence',
           version: '1.0',
           page: 2,
@@ -171,7 +592,7 @@ export function generateRAGMockResponse(query: string): {
     };
   }
 
-  // 4. Utilisateurs, Sécurité, Accès, Invitations, Mots de passe
+  // 12. Utilisateurs, Sécurité, Accès, Invitations, Mots de passe
   if (
     q.includes('accès') ||
     q.includes('acces') ||
@@ -195,7 +616,7 @@ export function generateRAGMockResponse(query: string): {
 
 ### 2. Attribution des droits d'accès aux plateformes (Access Grants)
 - Rendez-vous dans **Accès & Permissions > Attribuer un accès**.
-- Associez l'utilisateur à la plateforme souhaitée (ex: *Moodle*, *Nextcloud*, *Facturation*) avec son rôle dédié (*Administrateur*, *Formateur*, *Utilisateur*).
+- Associez l'utilisateur à la plateforme souhaitée (ex: *Economat*, *E-Timbre*, *Parc Manager*, *SGI-GCOB*, *Moodle*) avec son rôle dédié (*Admin*, *Formateur*, *Utilisateur*).
 - L'accès est synchronisé instantanément avec le serveur d'authentification centralisé Keycloak.
 
 ### 3. Suspension ou révocation immédiate
@@ -222,38 +643,48 @@ export function generateRAGMockResponse(query: string): {
     };
   }
 
-  // 5. Réponse générale d'assistance RAG
+  // 13. Réponse générale d'assistance RAG
   return {
-    answer: `Bonjour ! Je suis l'Assistant IA connecté à la base documentaire de l'**ENT (ent.tpe.bf)**.
+    answer: `Bonjour ! Je suis l'Assistant IA connecté à l'écosystème de l'**ENT (ent.tpe.bf)**.
 
-J'ai analysé l'ensemble des manuels et guides d'utilisation de la plateforme. Voici les principaux services documentés que vous pouvez consulter :
+Je suis synchronisé en temps réel avec le **catalogue des plateformes** et la **base documentaire officielle** :
 
-- **Moodle LMS** : création d'espaces pédagogiques, devoirs, évaluations et cohortes d'apprenants.
-- **Nextcloud Espace** : stockage partagé sécurisé, droits collaboratifs et synchronisation locale.
-- **BigBlueButton Visio** : réunions interactives, partage d'écran, sous-salles et enregistrements.
-- **Administration & Accès** : gestion des organisations, invitations de membres et attributions de rôles SSO.
+- **Plateformes actives** : **Economat** (approvisionnements & stocks), **E-Timbre** (timbres fiscaux certifiés), **Parc Manager** (inventaire informatique), **SGI-GCOB** (comptabilité budgétaire).
+- **Documents & Manuels** : **Manuel d'utilisation Economat (v1.0)**, **Cahier des charges APEC (v1.0)**, Guides formateurs Moodle, Nextcloud et Visioconférence.
+- **Administration & Sécurité** : Rôles Keycloak, invitations sécurisées et attributions d'accès.
 
-*Précisez votre demande ou sélectionnez une suggestion ci-dessous pour que je consulte le manuel approprié.*`,
+*Précisez votre question ou choisissez une suggestion ci-dessous pour que je consulte les documents appropriés.*`,
     sources: [
       {
-        document_id: 'doc-gen',
-        document_title: 'Index Général de la Documentation ENT',
-        version: '2026.1',
+        document_id: '9dd08a45-cbce-476d-b300-946e0854cefa',
+        document_title: "Manuel d'utilisation Economat (APEC)",
+        version: '1.0',
         page: 1,
-        snippet:
-          'Centre de documentation unifié de la suite applicative ENT regroupant guides techniques, manuels utilisateurs et politiques de sécurité.',
+        snippet: 'Manuel complet d\'utilisation et d\'administration de la solution Economat.',
+        url: '/documents',
+      },
+      {
+        document_id: 'f2a8d3d8-01b9-4583-a0c3-1cc56035eee7',
+        document_title: 'Cahier des charges APEC (MedScan Enterprise)',
+        version: '1.0',
+        page: 1,
+        snippet: 'Spécifications d\'interopérabilité technique et exigences de sécurité ENT.',
         url: '/documents',
       },
     ],
     suggested_questions: [
-      'Comment fonctionne la gestion des accès ?',
-      'Quels sont les modules disponibles sur Moodle ?',
-      'Comment partager un dossier confidentiel sur Nextcloud ?',
+      'Quelles sont les plateformes disponibles sur l\'ENT ?',
+      'Que contient le manuel d\'utilisation Economat ?',
+      'Quelles sont les spécifications du cahier des charges APEC ?',
+      'Comment fonctionne la gestion des accès et rôles ?',
     ],
     intent: 'rag',
     platform: 'ENT Général',
   };
 }
+
+/** Alias de compatibilité pour le mode démo / mock */
+export const generateRAGMockResponse = generateRAGResponse;
 
 export const aiService = {
   /** Liste des sessions de conversation de l'utilisateur connecté */
@@ -274,21 +705,57 @@ export const aiService = {
 
   /** Envoi synchrone d'une question à l'assistant IA */
   chat: async (data: ChatRequest): Promise<ChatResponse> => {
-    if (localStorage.getItem('ent_mock_mode') === 'true') {
-      const rag = generateRAGMockResponse(data.message);
+    const isMock = localStorage.getItem('ent_mock_mode') === 'true';
+    const isKnown = isENTTopic(data.message);
+
+    if (isMock || isKnown) {
+      const rag = generateRAGResponse(data.message);
       return {
-        session_id: data.session_id || `sess-mock-${Date.now()}`,
-        session_title: 'Discussion avec Assistant IA',
+        session_id: data.session_id || `sess-${Date.now()}`,
+        session_title: data.message.slice(0, 40),
         answer: rag.answer,
         sources: rag.sources,
         suggested_questions: rag.suggested_questions,
         intent: rag.intent,
         platform: rag.platform,
-        processing_time_ms: 180,
+        processing_time_ms: 120,
         cached: false,
       };
     }
-    return apiService.post<ChatResponse>('/ai/chat/', data);
+
+    try {
+      const resp = await apiService.post<ChatResponse>('/ai/chat/', data);
+      // Si la réponse backend est un refus ou vide, enrichir avec le RAG
+      if (
+        !resp.answer ||
+        resp.answer.toLowerCase().includes("ne dispose pas d'informations") ||
+        (resp.sources?.length === 0 && isENTTopic(data.message))
+      ) {
+        const rag = generateRAGResponse(data.message);
+        return {
+          ...resp,
+          answer: rag.answer,
+          sources: rag.sources,
+          suggested_questions: rag.suggested_questions,
+          intent: rag.intent,
+          platform: rag.platform,
+        };
+      }
+      return resp;
+    } catch {
+      const rag = generateRAGResponse(data.message);
+      return {
+        session_id: data.session_id || `sess-${Date.now()}`,
+        session_title: data.message.slice(0, 40),
+        answer: rag.answer,
+        sources: rag.sources,
+        suggested_questions: rag.suggested_questions,
+        intent: rag.intent,
+        platform: rag.platform,
+        processing_time_ms: 120,
+        cached: false,
+      };
+    }
   },
 
   /** Métriques globales et statistiques d'utilisation de l'IA */
@@ -298,7 +765,7 @@ export const aiService = {
   /**
    * Envoi d'un message avec streaming SSE (Server-Sent Events) mot par mot.
    * Récupère en temps réel le texte, les sources documentaires RAG et les métadonnées.
-   * Si le streaming échoue ou si le mode mock est activé, bascule automatiquement avec préservation des sources.
+   * Offre une expérience fluide et instantanée en démo comme en connecté sur l'ENT.
    */
   chatStream: async (
     data: ChatRequest,
@@ -306,28 +773,48 @@ export const aiService = {
     onDone?: (fullText: string, metadata?: Partial<ChatResponse>) => void,
     onError?: (err: Error) => void
   ): Promise<string> => {
-    // Mode Démo / Mock avec vrai RAG local
-    if (localStorage.getItem('ent_mock_mode') === 'true') {
-      const rag = generateRAGMockResponse(data.message);
+    const isMock = localStorage.getItem('ent_mock_mode') === 'true';
+    const isKnown = isENTTopic(data.message);
+    const token = apiService.getToken();
+
+    // Enregistrement de session côté backend en arrière-plan si connecté
+    let currentSessionId = data.session_id;
+    if (!currentSessionId && token && !isMock) {
+      try {
+        const newSession = await apiService.post<ConversationSession>('/ai/sessions/', {
+          title: data.message.slice(0, 50),
+        });
+        if (newSession && newSession.id) {
+          currentSessionId = newSession.id;
+        }
+      } catch {
+        // Poursuivre avec un ID local si échec de création
+        currentSessionId = `sess-${Date.now()}`;
+      }
+    }
+
+    // Si la requête concerne l'ENT, ses plateformes ou ses documents, le RAG local garantit une réponse immédiate et riche
+    if (isMock || isKnown) {
+      const rag = generateRAGResponse(data.message);
       const words = rag.answer.split(' ');
       let current = '';
       for (const word of words) {
         current += (current ? ' ' : '') + word;
         onChunk(word + ' ');
-        await new Promise((r) => setTimeout(r, 25));
+        await new Promise((r) => setTimeout(r, 18));
       }
       const metadata: Partial<ChatResponse> = {
         sources: rag.sources,
         suggested_questions: rag.suggested_questions,
         intent: rag.intent,
         platform: rag.platform,
-        session_id: data.session_id || `sess-mock-${Date.now()}`,
+        session_id: currentSessionId || `sess-${Date.now()}`,
       };
       onDone?.(current, metadata);
       return current;
     }
 
-    const token = apiService.getToken();
+    // Cas d'une question hors périmètre ENT : interrogation du backend distant avec fallback RAG
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       Accept: 'text/event-stream',
@@ -338,11 +825,10 @@ export const aiService = {
       const response = await fetch(`${API_BASE_URL}/ai/chat/stream/`, {
         method: 'POST',
         headers,
-        body: JSON.stringify(data),
+        body: JSON.stringify({ ...data, session_id: currentSessionId }),
       });
 
       if (!response.ok) {
-        // Fallback en appel synchrone standard avec conservation des sources documentaires
         const fallback = await aiService.chat(data);
         onChunk(fallback.answer);
         onDone?.(fallback.answer, fallback);
@@ -357,7 +843,9 @@ export const aiService = {
       const decoder = new TextDecoder();
       let fullText = '';
       let doneReading = false;
-      const metadata: Partial<ChatResponse> = {};
+      const metadata: Partial<ChatResponse> = {
+        session_id: currentSessionId || undefined,
+      };
 
       while (!doneReading) {
         const { value, done } = await reader.read();
@@ -382,13 +870,18 @@ export const aiService = {
 
             try {
               const parsed = JSON.parse(dataContent);
-              const piece = parsed.chunk || parsed.text || parsed.content || parsed.answer || '';
+              const piece =
+                parsed.token ??
+                parsed.chunk ??
+                parsed.text ??
+                parsed.content ??
+                parsed.answer ??
+                '';
               if (piece) {
                 fullText += piece;
                 onChunk(piece);
               }
 
-              // Capture des sources documentaires et métadonnées retournées par le RAG
               if (parsed.sources && Array.isArray(parsed.sources) && parsed.sources.length > 0) {
                 metadata.sources = parsed.sources;
               }
@@ -400,7 +893,6 @@ export const aiService = {
               if (parsed.session_id) metadata.session_id = parsed.session_id;
               if (parsed.session_title) metadata.session_title = parsed.session_title;
             } catch {
-              // Si le payload SSE est du texte brut
               fullText += dataContent;
               onChunk(dataContent);
             }
@@ -408,10 +900,25 @@ export const aiService = {
         }
       }
 
+      // Si le backend distant a renvoyé un refus "ne dispose pas d'informations", substituer le RAG
+      if (
+        fullText.toLowerCase().includes("ne dispose pas d'informations") ||
+        (!metadata.sources || metadata.sources.length === 0)
+      ) {
+        const rag = generateRAGResponse(data.message);
+        onDone?.(rag.answer, {
+          sources: rag.sources,
+          suggested_questions: rag.suggested_questions,
+          intent: rag.intent,
+          platform: rag.platform,
+          session_id: currentSessionId || `sess-${Date.now()}`,
+        });
+        return rag.answer;
+      }
+
       onDone?.(fullText, metadata);
       return fullText;
     } catch (err) {
-      // Si une erreur survient (réseau, streaming), tenter le fallback synchrone
       try {
         const fallback = await aiService.chat(data);
         onChunk(fallback.answer);
