@@ -73,12 +73,6 @@ class ApiService {
     // pour absorber la latence réseau de l'appel de refresh lui-même.
     const delay = expiryMs - Date.now() - 5000;
     if (delay <= 0) {
-      // Tolérance d'horloge : si le token est récent (moins de 2 minutes),
-      // ne pas tenter un refresh immédiat pour éviter d'invalider une session valide
-      if (expiryMs > Date.now() - 120000) {
-        this.expiryTimer = setTimeout(() => this.tryRefresh().catch(() => undefined), 30000);
-        return;
-      }
       this.tryRefresh().catch(() => undefined);
       return;
     }
@@ -145,11 +139,10 @@ class ApiService {
   }
 
   private handleUnauthorized(): void {
-    if (window.location.pathname === '/login') {
-      return;
-    }
     this.clearTokens();
-    window.location.href = '/login';
+    if (window.location.pathname !== '/login') {
+      window.location.href = '/login';
+    }
   }
 
   private getFallbackMessage(status: number): string {
@@ -532,13 +525,41 @@ class ApiService {
           } catch {
             // ignore
           }
+          const msg = (bodyObj.message || '').toLowerCase();
+          let answer = `Bonjour ! Concernant votre demande « ${bodyObj.message || '...' } », vous pouvez effectuer cette action directement depuis l'interface ou consulter la documentation dédiée dans l'onglet Documents.`;
+          let docTitle = 'Guide de démarrage ENT';
+          let page = 1;
+          let snippet = "L'ENT regroupe les outils pédagogiques et administratifs essentiels.";
+          let platform = 'ENT Général';
+
+          if (msg.includes('moodle') || msg.includes('cours') || msg.includes('formateur')) {
+            docTitle = "Guide d'accueil des formateurs Moodle";
+            page = 4;
+            snippet = "L'activation du Mode Édition permet l'ajout modulaire de devoirs, tests et ressources pédagogiques.";
+            platform = 'Moodle LMS';
+            answer = "D'après le **Guide d'accueil des formateurs Moodle (v2.1)** :\n\n1. Rendez-vous dans **Administration du site > Gestion des cours et catégories**.\n2. Cliquez sur **« Créer un nouveau cours »** et définissez le format d'enseignement.\n3. Utilisez le bouton **Mode Édition** pour insérer des activités (devoirs, tests, forums).";
+          } else if (msg.includes('nextcloud') || msg.includes('partage') || msg.includes('fichier')) {
+            docTitle = "Manuel d'utilisation Nextcloud & Partages";
+            page = 7;
+            snippet = "Tout partage externe doit être protégé par mot de passe et comporter une date limite d'expiration.";
+            platform = 'Nextcloud Espace';
+            answer = "D'après le **Manuel d'utilisation Nextcloud & Partages (v1.4)** :\n\n1. Ouvrez l'application **Fichiers** et cliquez sur l'icône de partage.\n2. Pour un collaborateur, recherchez son nom dans l'annuaire interne.\n3. Pour un tiers externe, cochez **Partager par lien** avec mot de passe et date de fin.";
+          } else if (msg.includes('visio') || msg.includes('bigbluebutton') || msg.includes('micro')) {
+            docTitle = "Guide de démarrage rapide Visioconférence";
+            page = 2;
+            snippet = "Le test d'écho audio valide le fonctionnement du micro avant l'entrée dans la salle.";
+            platform = 'BigBlueButton Visio';
+            answer = "D'après le **Guide de démarrage rapide Visioconférence (v1.0)** de BigBlueButton :\n\n1. Choisissez **Microphone** lors de la connexion au salon et validez le test d'écho.\n2. Cliquez sur l'icône d'écran pour diffuser une fenêtre ou votre écran entier.\n3. Utilisez **Actions (+) > Télécharger une présentation** pour projeter des slides PDF.";
+          }
+
           return resolve({
             session_id: bodyObj.session_id || 'sess-mock-1',
             session_title: 'Discussion avec Assistant IA',
-            answer: `Bonjour ! Concernant votre demande « ${bodyObj.message || '...' } », vous pouvez effectuer cette action directement depuis l'interface ou consulter la documentation dédiée dans l'onglet Documents.`,
-            sources: [{ document_title: 'Guide de démarrage ENT', page: 1 }],
-            suggested_questions: ['Comment inviter un utilisateur ?', 'Comment révoquer un accès ?'],
+            answer,
+            sources: [{ document_title: docTitle, page, snippet, url: '/documents' }],
+            suggested_questions: ['Comment inviter un utilisateur ?', 'Comment révoquer un accès ?', 'Comment partager un dossier ?'],
             intent: 'rag',
+            platform,
             processing_time_ms: 120,
             cached: false,
           } as T);
@@ -587,9 +608,7 @@ class ApiService {
         const refreshed = await this.tryRefresh();
         if (refreshed) return this.request<T>(endpoint, options, true);
       }
-      if (endpoint !== '/me/' && !endpoint.startsWith('/me')) {
-        this.handleUnauthorized();
-      }
+      this.handleUnauthorized();
       throw new Error('Session expirée. Veuillez vous reconnecter.');
     }
 

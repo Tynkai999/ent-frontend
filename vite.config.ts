@@ -3,7 +3,6 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
-  const backendTarget = env.VITE_DEV_API_URL || 'https://ent.tpe.bf'
 
   return {
     plugins: [react()],
@@ -12,28 +11,7 @@ export default defineConfig(({ mode }) => {
       port: 5173,
       proxy: {
         '/api': {
-          target: backendTarget,
-          changeOrigin: true,
-          secure: false,
-        },
-        '/auth': {
-          target: backendTarget,
-          changeOrigin: true,
-          secure: false,
-        },
-      },
-    },
-    preview: {
-      host: true,
-      port: 5173,
-      proxy: {
-        '/api': {
-          target: backendTarget,
-          changeOrigin: true,
-          secure: false,
-        },
-        '/auth': {
-          target: backendTarget,
+          target: env.VITE_DEV_API_URL || 'https://ent.tpe.bf',
           changeOrigin: true,
           secure: false,
         },

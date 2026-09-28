@@ -15,7 +15,7 @@ interface AuthContextValue {
    * transitoire du backend déconnecte tout le monde et déclenche un
    * aller-retour Keycloak en boucle alors que le jeton est valide. */
   serverUnreachable: boolean;
-  refresh: (initialUser?: User | null) => Promise<void>;
+  refresh: () => Promise<void>;
   logout: () => void;
 }
 
@@ -26,32 +26,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const [serverUnreachable, setServerUnreachable] = useState(false);
 
-  const refresh = useCallback(async (initialUser?: User | null) => {
-    if (initialUser) {
-      setUser(initialUser);
-      setServerUnreachable(false);
-      setLoading(false);
-    }
-
+  const refresh = useCallback(async () => {
     if (!authService.isAuthenticated()) {
       setUser(null);
       setServerUnreachable(false);
       setLoading(false);
       return;
     }
-
     try {
       const me = await meService.get();
       setUser(me);
       setServerUnreachable(false);
     } catch (err) {
-      // Si l'appel /me/ échoue (ex: endpoint temporairement indisponible, 401 sur l'API DRF, etc.),
-      // on tente d'extraire le profil utilisateur directement depuis le JWT Keycloak
-      const fallbackUser = initialUser || authService.getUserFromToken();
-      if (fallbackUser) {
-        setUser(fallbackUser);
-        setServerUnreachable(false);
-      } else if (err instanceof NetworkError) {
+      if (err instanceof NetworkError) {
         setServerUnreachable(true);
       } else {
         setUser(null);
