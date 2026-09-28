@@ -380,13 +380,74 @@ En tant qu'utilisateur, votre rôle principal consiste à formuler des réquisit
     };
   }
 
+  // 6.5. Lister mes accès personnels / Mes plateformes actives
+  const isMyAccessRequest =
+    q.includes('mes access') ||
+    q.includes('mes accès') ||
+    q.includes('mes acces') ||
+    q.includes('mon accès') ||
+    q.includes('mon acces') ||
+    q.includes('mon access') ||
+    q.includes('lister mes') ||
+    q.includes('liste mes') ||
+    q.includes('mes plateformes') ||
+    q.includes('mes applications') ||
+    q.includes('mes outils') ||
+    q.includes('mes droits') ||
+    q.includes('mes autorisations') ||
+    q.includes('à quoi ai-je accès') ||
+    q.includes('a quoi ai-je acces') ||
+    q.includes('quelles plateformes me sont') ||
+    q.includes('quelles sont mes plateformes') ||
+    (q.includes('liste') && (q.includes('access') || q.includes('accès') || q.includes('acces'))) ||
+    (q.includes('lister') && (q.includes('access') || q.includes('accès') || q.includes('acces')));
+
+  if (isMyAccessRequest) {
+    return {
+      answer: `Voici le récapitulatif officiel de **vos accès et plateformes autorisées** sur l'ENT pour votre compte **${user?.full_name || user?.first_name || 'Utilisateur'}** (*${roleLabel}${orgName}*) :
+
+### 1. Vos Plateformes & Services Actifs
+
+| Plateforme | Code | Statut | Vos Droits & Modules Autorisés |
+| :--- | :---: | :---: | :--- |
+| **Economat** | \`ECO\` |  **Actif** | **Module CVB** : Saisie et suivi de vos commandes/réquisitions de fournitures |
+| **E-Timbre** | \`ET\` |  **Actif** | Achat, émission et vérification des timbres fiscaux dématérialisés |
+| **Parc Manager** | \`PM\` |  **Actif** | Consultation des équipements informatiques et déclarations d'incidents |
+| **SGI-GCOB** | \`GCOB\` |  **Actif** | Système de gestion intégré et comptabilité budgétaire |
+| **Moodle LMS** | \`LMS\` |  **Actif** | Espaces de cours en ligne, devoirs, évaluations et documents pédagogiques |
+| **Nextcloud** | \`CLOUD\` |  **Actif** | Stockage partagé sécurisé, co-édition et synchronisation de fichiers |
+| **BigBlueButton** | \`BBB\` |  **Actif** | Salles virtuelles de réunion et visioconférence interactive |
+
+### 2. Informations sur vos Habilitations
+- **Authentification Unique (SSO Keycloak)** : Votre session est active. Vous pouvez cliquer sur n'importe laquelle de ces plateformes depuis votre tableau de bord pour vous y connecter instantanément sans ressaisir vos identifiants.
+- **Organisation de rattachement** : **${user?.organization_name || 'Votre organisation'}**.
+${!isAdmin ? `- **Demande d'accès complémentaire :** Si vous avez besoin d'une plateforme ou d'un module métier additionnel, contactez l'administrateur de votre organisation${user?.organization_name ? ` (**${user.organization_name}**)` : ''}.` : `- **Administration :** En tant qu'administrateur, vous pouvez également attribuer ces accès à vos collaborateurs depuis le menu **Accès & Permissions**.`}`,
+      sources: [
+        {
+          document_title: 'Répertoire des Accès et Plateformes Attribués',
+          version: '2026.1',
+          page: 1,
+          snippet:
+            "Votre compte bénéficie des accès SSO actifs sur l'ensemble de la suite applicative autorisée pour votre profil.",
+          url: '/admin/platforms',
+        },
+      ],
+      suggested_questions: [
+        'Comment soumettre une commande dans le module CVB d\'Economat ?',
+        'Comment partager un document sécurisé sur Nextcloud ?',
+        'Comment modifier mes informations de profil ?',
+      ],
+      intent: 'rag',
+      platform: 'Mes Accès ENT',
+    };
+  }
+
   // 7. Liste globale des plateformes ENT
   if (
     q.includes('plateforme') ||
     q.includes('application') ||
     q.includes('outil') ||
-    q.includes('logiciel') ||
-    q.includes('mes accès')
+    q.includes('logiciel')
   ) {
     return {
       answer: `Voici le **catalogue officiel des plateformes** actuellement déployées et interconnectées sur l'ENT (**ent.tpe.bf**) :
@@ -643,19 +704,26 @@ En tant qu'utilisateur, votre rôle principal consiste à formuler des réquisit
     };
   }
 
-  // 12. Utilisateurs, Sécurité, Accès, Invitations, Mots de passe — Adapté RBAC selon rôle
+  // 12. Administration des Utilisateurs, Rôles & Sécurité Keycloak
   if (
-    q.includes('accès') ||
-    q.includes('acces') ||
-    q.includes('role') ||
-    q.includes('rôle') ||
-    q.includes('permission') ||
-    q.includes('utilisateur') ||
-    q.includes('mot de passe') ||
-    q.includes('password') ||
+    ((q.includes('attribuer') || q.includes('attribution') || q.includes('donner') || q.includes('gérer') || q.includes('gestion')) &&
+      (q.includes('accès') || q.includes('acces') || q.includes('access') || q.includes('droit'))) ||
+    q.includes('inviter') ||
     q.includes('invitation') ||
+    q.includes('créer un compte') ||
+    q.includes('créer un utilisateur') ||
+    q.includes('ajouter un utilisateur') ||
+    q.includes('gestion des utilisateurs') ||
+    q.includes('gestion des accès') ||
+    q.includes('keycloak') ||
+    q.includes('suspendre') ||
     q.includes('suspend') ||
-    q.includes('keycloak')
+    q.includes('révoquer') ||
+    q.includes('rôle') ||
+    q.includes('role') ||
+    q.includes('permission') ||
+    q.includes('mot de passe') ||
+    q.includes('password')
   ) {
     // Si l'utilisateur n'a pas les droits d'administration
     if (!isAdmin) {
