@@ -47,30 +47,9 @@ export function isENTTopic(query: string): boolean {
     q.includes('version') ||
     q.includes('documentation') ||
     q.includes('moodle') ||
-    q.includes('cours') ||
-    q.includes('formateur') ||
-    q.includes('enseignant') ||
-    q.includes('devoir') ||
-    q.includes('étudiant') ||
-    q.includes('etudiant') ||
-    q.includes('pedagogie') ||
     q.includes('nextcloud') ||
-    q.includes('partage') ||
-    q.includes('fichier') ||
-    q.includes('dossier') ||
-    q.includes('stockage') ||
-    q.includes('cloud') ||
-    q.includes('sync') ||
-    q.includes('visio') ||
     q.includes('bigbluebutton') ||
     q.includes('bbb') ||
-    q.includes('micro') ||
-    q.includes('camera') ||
-    q.includes('caméra') ||
-    q.includes('reunion') ||
-    q.includes('réunion') ||
-    q.includes('ecran') ||
-    q.includes('écran') ||
     q.includes('accès') ||
     q.includes('acces') ||
     q.includes('role') ||
@@ -414,9 +393,6 @@ En tant qu'utilisateur, votre rôle principal consiste à formuler des réquisit
 | **E-Timbre** | \`ET\` |  **Actif** | Achat, émission et vérification des timbres fiscaux dématérialisés |
 | **Parc Manager** | \`PM\` |  **Actif** | Consultation des équipements informatiques et déclarations d'incidents |
 | **SGI-GCOB** | \`GCOB\` |  **Actif** | Système de gestion intégré et comptabilité budgétaire |
-| **Moodle LMS** | \`LMS\` |  **Actif** | Espaces de cours en ligne, devoirs, évaluations et documents pédagogiques |
-| **Nextcloud** | \`CLOUD\` |  **Actif** | Stockage partagé sécurisé, co-édition et synchronisation de fichiers |
-| **BigBlueButton** | \`BBB\` |  **Actif** | Salles virtuelles de réunion et visioconférence interactive |
 
 ### 2. Informations sur vos Habilitations
 - **Authentification Unique (SSO Keycloak)** : Votre session est active. Vous pouvez cliquer sur n'importe laquelle de ces plateformes depuis votre tableau de bord pour vous y connecter instantanément sans ressaisir vos identifiants.
@@ -434,7 +410,7 @@ ${!isAdmin ? `- **Demande d'accès complémentaire :** Si vous avez besoin d'une
       ],
       suggested_questions: [
         'Comment soumettre une commande dans le module CVB d\'Economat ?',
-        'Comment partager un document sécurisé sur Nextcloud ?',
+        'Comment accéder à E-Timbre ou Parc Manager ?',
         'Comment modifier mes informations de profil ?',
       ],
       intent: 'rag',
@@ -458,9 +434,6 @@ ${!isAdmin ? `- **Demande d'accès complémentaire :** Si vous avez besoin d'une
 | **E-Timbre** | \`ET\` | Dématérialisation, émission et vérification des timbres fiscaux par QR code | [etimbre.tpe.bf](https://etimbre.tpe.bf/home/) |
 | **Parc Manager** | \`PM\` | Inventaire du parc informatique, affectations de matériel et maintenance | [parcmanager.tpe.bf](https://parcmanager.tpe.bf/login) |
 | **SGI-GCOB** | \`GCOB\` | Système de Gestion Intégré et Comptabilité Budgétaire | [gcob.mzeba.dev](https://gcob.mzeba.dev/login/?next=/) |
-| **Moodle LMS** | \`LMS\` | Espaces de cours, devoirs, évaluations et cohortes pédagogiques | Intégré ENT |
-| **Nextcloud** | \`CLOUD\` | Espace collaboratif, partage sécurisé et synchronisation de documents | Intégré ENT |
-| **BigBlueButton** | \`BBB\` | Salles virtuelles, réunions en visioconférence et partages d'écran | Intégré ENT |
 
 > [!NOTE]
 > Toutes ces plateformes bénéficient de l'**authentification unique (SSO Keycloak)**.${isAdmin ? ' Vous pouvez configurer les droits d\'accès des collaborateurs depuis l\'onglet **Accès & Permissions**.' : ' Vos droits d\'accès effectifs sont attribués par l\'administrateur de votre organisation.'}`,
@@ -470,7 +443,7 @@ ${!isAdmin ? `- **Demande d'accès complémentaire :** Si vous avez besoin d'une
           version: '2026.1',
           page: 1,
           snippet:
-            "L'ENT fédère les applications métier (Economat, E-Timbre, Parc Manager, SGI-GCOB) et les espaces collaboratifs sous un SSO unifié.",
+            "L'ENT fédère les applications métier officielles (Economat, E-Timbre, Parc Manager, SGI-GCOB) sous un SSO unifié.",
           url: '/admin/platforms',
         },
         {
@@ -511,21 +484,15 @@ ${!isAdmin ? `- **Demande d'accès complémentaire :** Si vous avez besoin d'une
     return {
       answer: `Voici la **liste des documents et manuels officiels** indexés dans la base documentaire de l'ENT :
 
-### 1. Documents Métier & Spécifications Techniques
+### Documents Métier & Spécifications Techniques
 - **Manuel d'utilisation Economat (v1.0)** :
   - *Catégorie* : Manuel d'utilisation | *Plateforme* : Economat (\`ECO\`)
   - *Fichier* : \`APEC_Manuel_dutilisation_admin_APEC.pdf\`
   - *Contenu* : Procédures de réquisition dans le module CVB, validation hiérarchique, gestion des stocks et alertes de réapprovisionnement.
 - **Cahier des charges APEC (v1.0)** :
-  - *Catégorie* : Notes de version / Cahier des charges | *Plateforme* : Economat
+  - *Catégorie* : Notes de version / Cahier des charges | *Plateforme* : Economat (\`ECO\`)
   - *Fichier* : \`MedScan_Enterprise_Cahier_des_Charges_Ekrdqz8.pdf\`
   - *Contenu* : Spécifications d'interopérabilité technique, connecteurs OpenID Connect / Keycloak, conformité de sécurité TLS 1.3 et traçabilité d'audit.
-
-### 2. Guides Pédagogiques & Collaboratifs ENT
-- **Guide des formateurs Moodle (v2.1)** : Espaces de cours, activités devoirs, tests et cohortes.
-- **Manuel d'utilisation Nextcloud & Partages (v1.4)** : Règles de partage interne/externe avec mot de passe et date de validité.
-- **Guide de démarrage rapide Visioconférence (v1.0)** : Configuration micro, test d'écho et partage d'écran.
-- **Documentation Droits & Keycloak (v1.2)** : Habilitations RBAC, invitations sécurisées et gestion des sessions SSO.
 
 > Cliquez sur l'une des sources ci-dessous pour accéder directement au gestionnaire de documents de l'ENT.`,
       sources: [
@@ -556,151 +523,43 @@ ${!isAdmin ? `- **Demande d'accès complémentaire :** Si vous avez besoin d'une
     };
   }
 
-  // 9. Moodle LMS (cours, devoirs, pédagogie, formateurs)
+  // 9. Modules de démonstration / test retirés (Moodle, Nextcloud, BigBlueButton)
   if (
     q.includes('moodle') ||
-    q.includes('cours') ||
-    q.includes('formateur') ||
-    q.includes('enseignant') ||
-    q.includes('devoir') ||
-    q.includes('étudiant') ||
-    q.includes('etudiant') ||
-    q.includes('pedagogie')
-  ) {
-    return {
-      answer: `D'après le **Guide d'accueil des formateurs Moodle (v2.1)**, voici les éléments clés pour gérer vos espaces pédagogiques :
-
-### 1. Création et paramétrage d'un cours
-- Rendez-vous sur la plateforme **Moodle LMS** depuis vos applications ENT.
-- Dans le menu d'administration, cliquez sur **« Gérer les cours et catégories »** puis sur **« Créer un cours »**.
-- Définissez le nom officiel, la visibilité et le format d'enseignement (*Hebdomadaire* ou *Thématique*).
-
-### 2. Ajout de ressources et activités
-- Activez le **Mode Édition** (bouton en haut à droite).
-- Cliquez sur **« Ajouter une activité ou ressource »** :
-  - **Devoir** : pour les dépôts de travaux notés avec date limite.
-  - **Test** : pour les QCM et évaluations automatiques.
-  - **Fichier / Dossier** : pour distribuer des documents de cours (PDF, slides).
-
-### 3. Gestion des inscriptions et cohortes
-- Accédez à l'onglet **Participants > Inscrire des utilisateurs**.
-- Vous pouvez associer des cohortes entières créées dans l'annuaire ENT pour automatiser les effectifs.`,
-      sources: [
-        {
-          document_id: 'doc-moodle',
-          document_title: "Guide d'accueil des formateurs Moodle",
-          version: '2.1',
-          page: 4,
-          snippet:
-            "L'activation du Mode Édition permet l'ajout modulaire de devoirs, tests et ressources. Les inscriptions peuvent être synchronisées automatiquement via les cohortes de l'ENT.",
-          url: '/documents',
-        },
-      ],
-      suggested_questions: [
-        'Comment configurer un devoir avec barème de notation ?',
-        'Comment synchroniser les cohortes avec Moodle ?',
-        'Comment exporter les notes vers le tableur ?',
-      ],
-      intent: 'rag',
-      platform: 'Moodle LMS',
-    };
-  }
-
-  // 10. Nextcloud (partage de fichiers, stockage, synchronisation)
-  if (
     q.includes('nextcloud') ||
-    q.includes('partage') ||
-    q.includes('fichier') ||
-    q.includes('dossier') ||
-    q.includes('stockage') ||
-    q.includes('cloud') ||
-    q.includes('sync')
-  ) {
-    return {
-      answer: `D'après le **Manuel d'utilisation Nextcloud & Partages (v1.4)**, voici la procédure officielle de gestion documentaire :
-
-### 1. Partager un fichier ou dossier avec un collaborateur
-- Ouvrez **Nextcloud Espace** et naviguez vers vos fichiers.
-- Cliquez sur l'icône de partage **<...>** sur la ligne du document.
-- Saisissez le nom ou l'email du destinataire au sein de l'organisation.
-- Ajustez les permissions : *Lecture seule*, *Autoriser la modification*, ou *Interdire le repartage*.
-
-### 2. Générer un lien public sécurisé
-- Cochez **« Partager par lien »** pour les personnes externes à l'ENT.
-- **Règles de sécurité documentées :**
-  - Définir impérativement un **mot de passe d'accès**.
-  - Fixer une **date d'expiration** (maximum 30 jours conseillé).
-  - Activer la protection anti-téléchargement si nécessaire.
-
-### 3. Synchronisation locale
-- Installez le client de bureau Nextcloud disponible sur le portail pour synchroniser vos dossiers professionnels en continu.`,
-      sources: [
-        {
-          document_id: 'doc-nextcloud',
-          document_title: "Manuel d'utilisation Nextcloud & Partages",
-          version: '1.4',
-          page: 7,
-          snippet:
-            'Tout partage externe doit être obligatoirement protégé par mot de passe et comporter une date limite de validité pour garantir la conformité aux exigences de sécurité ENT.',
-          url: '/documents',
-        },
-      ],
-      suggested_questions: [
-        "Quelle est la taille maximale d'un fichier sur Nextcloud ?",
-        'Comment récupérer un fichier supprimé par erreur ?',
-        'Comment créer un dossier partagé pour un groupe de travail ?',
-      ],
-      intent: 'rag',
-      platform: 'Nextcloud Espace',
-    };
-  }
-
-  // 11. Visioconférence BigBlueButton
-  if (
-    q.includes('visio') ||
     q.includes('bigbluebutton') ||
-    q.includes('bbb') ||
-    q.includes('micro') ||
-    q.includes('camera') ||
-    q.includes('caméra') ||
-    q.includes('reunion') ||
-    q.includes('réunion') ||
-    q.includes('ecran') ||
-    q.includes('écran')
+    q.includes('bbb')
   ) {
     return {
-      answer: `D'après le **Guide de démarrage rapide Visioconférence (v1.0)** de BigBlueButton :
+      answer: `Les modules de démonstration (**Moodle LMS**, **Nextcloud** et **BigBlueButton**) ne font pas partie de l'environnement de production de l'ENT (**ent.tpe.bf**).
 
-### 1. Connexion et test audio
-- Lors de votre entrée dans le salon virtuel, choisissez **« Microphone »**.
-- Effectuez le test d'écho : si vous entendez votre voix clairement, confirmez en cliquant sur le pouce vert.
-- En cas de problème de son, vérifiez que le navigateur a bien l'autorisation d'accéder au périphérique audio.
+L'ENT centralise exclusivement les **4 plateformes métier officielles** :
 
-### 2. Partage d'écran et documents
-- Cliquez sur l'icône d'écran dans la barre d'outils inférieure pour diffuser votre bureau ou une application précise.
-- Pour projeter un diaporama sans dégradation, utilisez le bouton **« + » (Actions) > Télécharger une présentation** au format PDF.
+| Plateforme | Code | Spécialité | Statut |
+| :--- | :---: | :--- | :---: |
+| **Economat** | \`ECO\` | Approvisionnements, commandes de fournitures (**CVB**) et stocks |  **Actif** |
+| **E-Timbre** | \`ET\` | Dématérialisation, émission et vérification des timbres fiscaux certifiés |  **Actif** |
+| **Parc Manager** | \`PM\` | Recensement du parc informatique et gestion de la maintenance |  **Actif** |
+| **SGI-GCOB** | \`GCOB\` | Système de gestion intégré et comptabilité budgétaire |  **Actif** |
 
-### 3. Enregistrement et modération
-- Seul le modérateur peut démarrer l'enregistrement de la session (bouton en haut de l'écran).
-- La liste des participants permet de couper les micros (*Mute all*) d'un clic pour préserver la qualité de la séance.`,
+> Vous pouvez accéder directement à ces 4 plateformes depuis votre tableau de bord via l'authentification unique (SSO Keycloak).`,
       sources: [
         {
-          document_id: 'doc-bbb',
-          document_title: 'Guide de démarrage rapide Visioconférence',
-          version: '1.0',
-          page: 2,
+          document_title: 'Catalogue Officiel des Plateformes ENT',
+          version: '2026.1',
+          page: 1,
           snippet:
-            'Le test audio est obligatoire à chaque entrée. La diffusion de présentations au format PDF offre un affichage vectoriel optimisé même sur les connexions à débit réduit.',
-          url: '/documents',
+            "L'écosystème ENT officiel intègre exclusivement Economat, E-Timbre, Parc Manager et SGI-GCOB.",
+          url: '/admin/platforms',
         },
       ],
       suggested_questions: [
-        'Comment créer des salles de sous-commission dans la visio ?',
-        "Où retrouver les enregistrements d'une réunion terminée ?",
-        'Comment attribuer le rôle de présentateur à un invité ?',
+        'Quelles sont les plateformes autorisées pour mon profil ?',
+        'Comment utiliser le module CVB d\'Economat ?',
+        'Comment fonctionne E-Timbre ?',
       ],
       intent: 'rag',
-      platform: 'BigBlueButton Visio',
+      platform: 'Catalogue ENT',
     };
   }
 
@@ -737,7 +596,7 @@ ${!isAdmin ? `- **Demande d'accès complémentaire :** Si vous avez besoin d'une
 ### 1. Que pouvez-vous faire avec votre compte utilisateur ?
 - **Consulter vos habilitations** : Vos plateformes autorisées apparaissent directement sur votre tableau de bord.
 - **Paramètres personnels** : Vous pouvez modifier vos coordonnées et changer votre mot de passe depuis l'icône de profil en haut à droite.
-- **Accéder à vos services** : Cliquez sur vos modules débloqués pour accéder directement en SSO à vos espaces de travail (Economat, Moodle, Nextcloud, etc.).
+- **Accéder à vos services** : Cliquez sur vos modules débloqués pour accéder directement en SSO à vos espaces de travail (Economat, E-Timbre, Parc Manager, SGI-GCOB).
 
 ### 2. Comment obtenir un nouvel accès ou inviter un collègue ?
 - Contactez directement l'administrateur de votre organisation${user?.organization_name ? ` (**${user.organization_name}**)` : ''}.
@@ -776,7 +635,7 @@ ${!isAdmin ? `- **Demande d'accès complémentaire :** Si vous avez besoin d'une
 
 ### 2. Attribution des droits d'accès aux plateformes (Access Grants)
 - Rendez-vous dans **Accès & Permissions > Attribuer un accès**.
-- Associez l'utilisateur à la plateforme souhaitée (ex: *Economat*, *E-Timbre*, *Parc Manager*, *SGI-GCOB*, *Moodle*) avec son rôle dédié (*Admin*, *Formateur*, *Utilisateur*).
+- Associez l'utilisateur à la plateforme souhaitée (ex: *Economat*, *E-Timbre*, *Parc Manager*, *SGI-GCOB*) avec son rôle dédié (*Admin*, *Utilisateur*).
 - L'accès est synchronisé instantanément avec le serveur d'authentification centralisé Keycloak.
 
 ### 3. Suspension ou révocation immédiate
@@ -811,8 +670,8 @@ Vous êtes actuellement connecté en tant que **${roleLabel}**${orgName}.
 
 Voici les ressources et services clés configurés pour votre profil :
 - **Plateformes actives** : **Economat** (approvisionnements & stocks), **E-Timbre** (timbres fiscaux certifiés), **Parc Manager** (inventaire informatique), **SGI-GCOB** (comptabilité budgétaire).
-- **Documents & Manuels** : **Manuel d'utilisation Economat (v1.0)**, **Cahier des charges APEC (v1.0)**, Guides formateurs Moodle, Nextcloud et Visioconférence.
-${isAdmin ? '- **Administration & Sécurité** : Rôles Keycloak, invitations sécurisées et attributions d\'accès.' : '- **Espace Utilisateur** : Suivi de vos commandes, partage de fichiers et collaboration.'}
+- **Documents & Manuels** : **Manuel d'utilisation Economat (v1.0)** et **Cahier des charges APEC (v1.0)**.
+${isAdmin ? '- **Administration & Sécurité** : Rôles Keycloak, invitations sécurisées et attributions d\'accès.' : '- **Espace Utilisateur** : Suivi de vos commandes et gestion de vos accès.'}
 
 *Posez votre question ou sélectionnez une suggestion ci-dessous pour que je consulte les manuels appropriés.*`,
     sources: [
@@ -843,8 +702,8 @@ ${isAdmin ? '- **Administration & Sécurité** : Rôles Keycloak, invitations s�
       : [
           'Quelles sont les plateformes auxquelles j\'ai accès ?',
           'Comment soumettre une commande dans le module CVB d\'Economat ?',
-          'Comment partager un document sécurisé sur Nextcloud ?',
-          'Comment participer à une visioconférence BigBlueButton ?',
+          'Comment accéder à E-Timbre ou Parc Manager ?',
+          'Que contient le cahier des charges APEC ?',
         ],
     intent: 'rag',
     platform: 'ENT Général',

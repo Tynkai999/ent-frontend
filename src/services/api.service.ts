@@ -360,7 +360,7 @@ class ApiService {
         // PLATFORMS
         if (url === '/platforms/' || url.startsWith('/platforms/')) {
           if (url.includes('/sso-redirect/')) {
-            return resolve({ url: 'https://moodle.org' } as T);
+            return resolve({ url: 'https://economat.tpe.bf/' } as T);
           }
           if (method === 'GET') {
             return resolve({
@@ -394,7 +394,7 @@ class ApiService {
         // ACCESS GRANTS
         if (url === '/access-grants/' || url.startsWith('/access-grants/')) {
           if (url.includes('/sso-redirect/')) {
-            return resolve({ url: 'https://moodle.org' } as T);
+            return resolve({ url: 'https://economat.tpe.bf/' } as T);
           }
           if (url.includes('/revoke/')) {
             return resolve({ ...MOCK_ACCESS_GRANTS[0], status: 'revoked' } as T);
@@ -549,29 +549,41 @@ class ApiService {
           }
           const msg = (bodyObj.message || '').toLowerCase();
           let answer = `Bonjour ! Concernant votre demande « ${bodyObj.message || '...' } », vous pouvez effectuer cette action directement depuis l'interface ou consulter la documentation dédiée dans l'onglet Documents.`;
-          let docTitle = 'Guide de démarrage ENT';
+          let docTitle = "Manuel d'utilisation Economat (APEC)";
           let page = 1;
-          let snippet = "L'ENT regroupe les outils pédagogiques et administratifs essentiels.";
+          let snippet = "L'ENT regroupe les 4 applications métier officielles : Economat, E-Timbre, Parc Manager et SGI-GCOB.";
           let platform = 'ENT Général';
 
-          if (msg.includes('moodle') || msg.includes('cours') || msg.includes('formateur')) {
-            docTitle = "Guide d'accueil des formateurs Moodle";
-            page = 4;
-            snippet = "L'activation du Mode Édition permet l'ajout modulaire de devoirs, tests et ressources pédagogiques.";
-            platform = 'Moodle LMS';
-            answer = "D'après le **Guide d'accueil des formateurs Moodle (v2.1)** :\n\n1. Rendez-vous dans **Administration du site > Gestion des cours et catégories**.\n2. Cliquez sur **« Créer un nouveau cours »** et définissez le format d'enseignement.\n3. Utilisez le bouton **Mode Édition** pour insérer des activités (devoirs, tests, forums).";
-          } else if (msg.includes('nextcloud') || msg.includes('partage') || msg.includes('fichier')) {
-            docTitle = "Manuel d'utilisation Nextcloud & Partages";
-            page = 7;
-            snippet = "Tout partage externe doit être protégé par mot de passe et comporter une date limite d'expiration.";
-            platform = 'Nextcloud Espace';
-            answer = "D'après le **Manuel d'utilisation Nextcloud & Partages (v1.4)** :\n\n1. Ouvrez l'application **Fichiers** et cliquez sur l'icône de partage.\n2. Pour un collaborateur, recherchez son nom dans l'annuaire interne.\n3. Pour un tiers externe, cochez **Partager par lien** avec mot de passe et date de fin.";
-          } else if (msg.includes('visio') || msg.includes('bigbluebutton') || msg.includes('micro')) {
-            docTitle = "Guide de démarrage rapide Visioconférence";
+          if (msg.includes('economat') || msg.includes('cvb') || msg.includes('commande') || msg.includes('stock')) {
+            docTitle = "Manuel d'utilisation Economat (APEC)";
             page = 2;
-            snippet = "Le test d'écho audio valide le fonctionnement du micro avant l'entrée dans la salle.";
-            platform = 'BigBlueButton Visio';
-            answer = "D'après le **Guide de démarrage rapide Visioconférence (v1.0)** de BigBlueButton :\n\n1. Choisissez **Microphone** lors de la connexion au salon et validez le test d'écho.\n2. Cliquez sur l'icône d'écran pour diffuser une fenêtre ou votre écran entier.\n3. Utilisez **Actions (+) > Télécharger une présentation** pour projeter des slides PDF.";
+            snippet = "Le module CVB permet aux agents d'effectuer des réquisitions de fournitures et d'en suivre le circuit de validation.";
+            platform = 'Economat (ECO)';
+            answer = "D'après le **Manuel d'utilisation Economat (v1.0)** :\n\n1. Connectez-vous sur **Economat** via le SSO ENT.\n2. Accédez au **Module CVB** pour composer votre réquisition d'articles.\n3. Validez votre panier pour transmission hiérarchique et suivi de livraison.";
+          } else if (msg.includes('timbre') || msg.includes('etimbre') || msg.includes('fiscal')) {
+            docTitle = "Catalogue Officiel des Plateformes ENT";
+            page = 1;
+            snippet = "E-Timbre est la plateforme nationale de dématérialisation et de contrôle des timbres fiscaux intégrée au portail ENT.";
+            platform = 'E-Timbre (ET)';
+            answer = "La plateforme **E-Timbre (ET)** permet d'acheter, émettre et authentifier des timbres fiscaux certifiés munis d'un QR code infalsifiable.";
+          } else if (msg.includes('parc') || msg.includes('materiel') || msg.includes('matériel') || msg.includes('ordinateur')) {
+            docTitle = "Catalogue Officiel des Plateformes ENT";
+            page = 1;
+            snippet = "Parc Manager centralise le suivi du parc matériel, des affectations nominatives et des opérations de maintenance informatique.";
+            platform = 'Parc Manager (PM)';
+            answer = "La plateforme **Parc Manager (PM)** assure l'inventaire complet des équipements informatiques, le suivi des affectations par agent et la gestion des interventions techniques.";
+          } else if (msg.includes('gcob') || msg.includes('sgi') || msg.includes('budget') || msg.includes('compta')) {
+            docTitle = "Catalogue Officiel des Plateformes ENT";
+            page = 1;
+            snippet = "SGI-GCOB est le système intégré de comptabilité budgétaire et de mandatement des dépenses rattaché au portail ENT.";
+            platform = 'SGI-GCOB (GCOB)';
+            answer = "La plateforme **SGI-GCOB (GCOB)** gère l'exécution budgétaire, les engagements financiers, l'ordonnancement des dépenses et le mandatement.";
+          } else if (msg.includes('moodle') || msg.includes('nextcloud') || msg.includes('bigbluebutton') || msg.includes('bbb')) {
+            docTitle = "Catalogue Officiel des Plateformes ENT";
+            page = 1;
+            snippet = "L'écosystème ENT officiel intègre exclusivement Economat, E-Timbre, Parc Manager et SGI-GCOB.";
+            platform = 'Catalogue ENT';
+            answer = "Les services **Moodle LMS**, **Nextcloud** et **BigBlueButton** étaient des modules de démonstration et ne font pas partie de l'environnement de production de l'ENT (**ent.tpe.bf**). Les 4 plateformes officielles actives sont **Economat**, **E-Timbre**, **Parc Manager** et **SGI-GCOB**.";
           }
 
           return resolve({
@@ -579,7 +591,7 @@ class ApiService {
             session_title: 'Discussion avec Assistant IA',
             answer,
             sources: [{ document_title: docTitle, page, snippet, url: '/documents' }],
-            suggested_questions: ['Comment inviter un utilisateur ?', 'Comment révoquer un accès ?', 'Comment partager un dossier ?'],
+            suggested_questions: ['Quelles sont les plateformes autorisées ?', 'Comment utiliser le module CVB d\'Economat ?', 'Que contient le cahier des charges APEC ?'],
             intent: 'rag',
             platform,
             processing_time_ms: 120,

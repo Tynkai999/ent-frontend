@@ -51,7 +51,7 @@ const DEMO_ROLES: { role: Role; label: string; name: string; org: string; desc: 
     label: 'Utilisateur Client',
     name: 'Émilie Leroy',
     org: 'Académie de Paris',
-    desc: 'Consultation du tableau de bord et lancement des plateformes autorisées (Moodle, Nextcloud...).',
+    desc: 'Consultation du tableau de bord et lancement des plateformes autorisées (Economat, E-Timbre...).',
     badge: 'Standard',
     badgeColor: 'bg-emerald-100 text-emerald-700 border-emerald-200',
   },

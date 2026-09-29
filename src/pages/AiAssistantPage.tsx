@@ -77,8 +77,8 @@ export const AiAssistantPage: React.FC = () => {
       setSuggestedQuestions([
         "Quelles sont les plateformes autorisées pour mon compte ?",
         "Comment soumettre une commande dans le module CVB d'Economat ?",
-        "Comment partager un document sécurisé sur Nextcloud ?",
-        "Comment participer à une visioconférence BigBlueButton ?",
+        "Comment accéder à E-Timbre ou Parc Manager ?",
+        "Que contient le cahier des charges APEC ?",
       ]);
     }
   }, [user?.role, isSuperAdmin, isOrgAdmin]);
@@ -178,7 +178,7 @@ ${
 - **Documentation métier** : Manuel Economat, gestion des réquisitions.`
     : `En tant qu'**Utilisateur**, voici comment je peux vous guider au quotidien :
 - **Vos outils métiers** : Utilisation du module de commande CVB d'Economat, accès aux timbres.
-- **Collaboration & Partage** : Guides Nextcloud (fichiers) et BigBlueButton (visio).
+- **Accès aux plateformes** : E-Timbre, Parc Manager et SGI-GCOB.
 - **Assistance & Accompagnement** : Réponses à vos questions sur les documents officiels.`
 }
 
@@ -537,7 +537,6 @@ ${
                     : [
                         { id: '1', title: 'Manuel d\'utilisation Economat', platform_name: 'Economat' },
                         { id: '2', title: 'Cahier des charges APEC', platform_name: 'Economat' },
-                        { id: '3', title: 'Guide Formateurs Moodle', platform_name: 'Moodle LMS' },
                       ]
                   ).map((doc, idx) => (
                     <button
@@ -747,7 +746,7 @@ ${
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Posez votre question à l'Assistant IA (ex: droits, Moodle, Nextcloud, BigBlueButton)..."
+                placeholder="Posez votre question à l'Assistant IA (ex: mes accès, plateformes, Economat, E-Timbre, Parc Manager)..."
                 rows={1}
                 disabled={loading}
                 className="flex-1 bg-transparent border-0 resize-none px-3 py-1.5 text-sm text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none max-h-32 min-h-[38px]"
