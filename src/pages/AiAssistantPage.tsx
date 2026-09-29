@@ -182,25 +182,8 @@ ${
 - **Assistance & Accompagnement** : Réponses à vos questions sur les documents officiels.`
 }
 
-*Posez votre question ci-dessous ou cliquez sur l'un des guides proposés.*`,
-        sources: [
-          {
-            document_id: '9dd08a45-cbce-476d-b300-946e0854cefa',
-            document_title: "Manuel d'utilisation Economat (APEC)",
-            version: '1.0',
-            page: 1,
-            snippet: "Guide officiel d'utilisation et d'administration du portail Economat et de ses modules.",
-            url: '/documents',
-          },
-          {
-            document_id: 'f2a8d3d8-01b9-4583-a0c3-1cc56035eee7',
-            document_title: 'Cahier des charges APEC (MedScan Enterprise)',
-            version: '1.0',
-            page: 1,
-            snippet: "Spécifications fonctionnelles, intégration SSO Keycloak et sécurité des échanges ENT.",
-            url: '/documents',
-          },
-        ],
+*Posez votre question ci-dessous pour interroger l'Assistant IA sur la base documentaire de l'ENT.*`,
+        sources: [],
         intent: 'rag',
         platform: 'ENT Central',
       },
@@ -312,35 +295,62 @@ ${
           setLoading(false);
           loadSessions();
         },
-        async () => {
+        async (streamErr) => {
           // Fallback synchrone si échec SSE
-          const resp = await aiService.chat({ message: text, session_id: activeSessionId, user });
-          if (!activeSessionId && resp.session_id) {
-            setActiveSessionId(resp.session_id);
+          try {
+            const resp = await aiService.chat({ message: text, session_id: activeSessionId, user });
+            if (!activeSessionId && resp.session_id) {
+              setActiveSessionId(resp.session_id);
+            }
+            if (resp.suggested_questions && resp.suggested_questions.length > 0) {
+              setSuggestedQuestions(resp.suggested_questions);
+            }
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === tempAssistantId
+                  ? {
+                      ...m,
+                      content: resp.answer,
+                      sources: resp.sources,
+                      intent: resp.intent,
+                      platform: resp.platform,
+                    }
+                  : m
+              )
+            );
+            setLoading(false);
+            loadSessions();
+          } catch (chatErr) {
+            setLoading(false);
+            const errMsg = chatErr instanceof Error ? chatErr.message : streamErr?.message || "Erreur de communication avec l'assistant IA";
+            setError(errMsg);
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === tempAssistantId && !m.content
+                  ? {
+                      ...m,
+                      content: `⚠️ **Erreur du service IA :** ${errMsg}\n\nLe service IA distant n'a pas pu traiter cette requête. Si le document ou la plateforme est récemment ajouté, assurez-vous que l'indexation backend a été effectuée.`,
+                    }
+                  : m
+              )
+            );
           }
-          if (resp.suggested_questions && resp.suggested_questions.length > 0) {
-            setSuggestedQuestions(resp.suggested_questions);
-          }
-          setMessages((prev) =>
-            prev.map((m) =>
-              m.id === tempAssistantId
-                ? {
-                    ...m,
-                    content: resp.answer,
-                    sources: resp.sources,
-                    intent: resp.intent,
-                    platform: resp.platform,
-                  }
-                : m
-            )
-          );
-          setLoading(false);
-          loadSessions();
         }
       );
     } catch (err) {
       setLoading(false);
-      setError(err instanceof Error ? err.message : "Erreur de communication avec l'assistant");
+      const errMsg = err instanceof Error ? err.message : "Erreur de communication avec l'assistant";
+      setError(errMsg);
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === tempAssistantId && !m.content
+            ? {
+                ...m,
+                content: `⚠️ **Erreur de communication :** ${errMsg}`,
+              }
+            : m
+        )
+      );
     }
   };
 

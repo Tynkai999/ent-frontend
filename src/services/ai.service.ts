@@ -713,6 +713,12 @@ ${isAdmin ? '- **Administration & Sécurité** : Rôles Keycloak, invitations s�
 /** Alias de compatibilité pour le mode démo / mock */
 export const generateRAGMockResponse = generateRAGResponse;
 
+/** Vérifie si un identifiant est un UUID v4 valide attendu par le backend DRF */
+export function isValidUUID(id?: string | null): boolean {
+  if (!id) return false;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
+}
+
 export const aiService = {
   /** Liste des sessions de conversation de l'utilisateur connecté */
   listSessions: (params = '') =>
@@ -730,14 +736,13 @@ export const aiService = {
   deleteSession: (id: string) =>
     apiService.delete<{ detail?: string }>(`/ai/sessions/${id}/`),
 
-  /** Envoi synchrone d'une question à l'assistant IA */
+  /** Envoi synchrone d'une question à l'assistant IA distant (RAG backend sur les documents réels) */
   chat: async (data: ChatRequest): Promise<ChatResponse> => {
     const isMock = localStorage.getItem('ent_mock_mode') === 'true';
-    const isKnown = isENTTopic(data.message);
-    const user = data.user || null;
 
-    if (isMock || isKnown) {
-      const rag = generateRAGResponse(data.message, user);
+    // En mode démonstration / hors-ligne local uniquement
+    if (isMock) {
+      const rag = generateRAGResponse(data.message, data.user || null);
       return {
         session_id: data.session_id || `sess-${Date.now()}`,
         session_title: data.message.slice(0, 40),
@@ -751,39 +756,20 @@ export const aiService = {
       };
     }
 
-    try {
-      const resp = await apiService.post<ChatResponse>('/ai/chat/', data);
-      // Si la réponse backend est un refus ou vide, enrichir avec le RAG
-      if (
-        !resp.answer ||
-        resp.answer.toLowerCase().includes("ne dispose pas d'informations") ||
-        (resp.sources?.length === 0 && isENTTopic(data.message))
-      ) {
-        const rag = generateRAGResponse(data.message, user);
-        return {
-          ...resp,
-          answer: rag.answer,
-          sources: rag.sources,
-          suggested_questions: rag.suggested_questions,
-          intent: rag.intent,
-          platform: rag.platform,
-        };
-      }
-      return resp;
-    } catch {
-      const rag = generateRAGResponse(data.message, user);
-      return {
-        session_id: data.session_id || `sess-${Date.now()}`,
-        session_title: data.message.slice(0, 40),
-        answer: rag.answer,
-        sources: rag.sources,
-        suggested_questions: rag.suggested_questions,
-        intent: rag.intent,
-        platform: rag.platform,
-        processing_time_ms: 120,
-        cached: false,
-      };
+    // Préparation du payload strict pour l'API backend Django REST Framework
+    const payload: { message: string; session_id?: string; image?: string } = {
+      message: data.message,
+    };
+    if (isValidUUID(data.session_id)) {
+      payload.session_id = data.session_id;
     }
+    if (data.image) {
+      payload.image = data.image;
+    }
+
+    // Appel direct au backend distant de l'IA (lecture des documents indexés dans la base vectorielle)
+    const resp = await apiService.post<ChatResponse>('/ai/chat/', payload);
+    return resp;
   },
 
   /** Métriques globales et statistiques d'utilisation de l'IA */
@@ -791,9 +777,8 @@ export const aiService = {
     apiService.get<AiStatsResponse>('/ai/stats/'),
 
   /**
-   * Envoi d'un message avec streaming SSE (Server-Sent Events) mot par mot.
-   * Récupère en temps réel le texte, les sources documentaires RAG et les métadonnées.
-   * Offre une expérience fluide, contextuelle et adaptée au rôle de l'utilisateur.
+   * Envoi d'un message avec streaming SSE (Server-Sent Events) mot par mot depuis le backend distant.
+   * Lit les documents réellement indexés côté serveur et retransmet la réponse en temps réel.
    */
   chatStream: async (
     data: ChatRequest,
@@ -802,28 +787,11 @@ export const aiService = {
     onError?: (err: Error) => void
   ): Promise<string> => {
     const isMock = localStorage.getItem('ent_mock_mode') === 'true';
-    const isKnown = isENTTopic(data.message);
     const token = apiService.getToken();
-    const user = data.user || null;
 
-    // Enregistrement de session côté backend en arrière-plan si connecté
-    let currentSessionId = data.session_id;
-    if (!currentSessionId && token && !isMock) {
-      try {
-        const newSession = await apiService.post<ConversationSession>('/ai/sessions/', {
-          title: data.message.slice(0, 50),
-        });
-        if (newSession && newSession.id) {
-          currentSessionId = newSession.id;
-        }
-      } catch {
-        currentSessionId = `sess-${Date.now()}`;
-      }
-    }
-
-    // Si la requête concerne l'ENT, le RAG local contextualisé au rôle garantit une réponse immédiate
-    if (isMock || isKnown) {
-      const rag = generateRAGResponse(data.message, user);
+    // En mode démonstration / hors-ligne local uniquement
+    if (isMock) {
+      const rag = generateRAGResponse(data.message, data.user || null);
       const words = rag.answer.split(' ');
       let current = '';
       for (const word of words) {
@@ -836,13 +804,25 @@ export const aiService = {
         suggested_questions: rag.suggested_questions,
         intent: rag.intent,
         platform: rag.platform,
-        session_id: currentSessionId || `sess-${Date.now()}`,
+        session_id: data.session_id || `sess-${Date.now()}`,
       };
       onDone?.(current, metadata);
       return current;
     }
 
-    // Question hors périmètre : streaming depuis le backend distant avec fallback RAG
+    // Gestion de la session backend
+    const currentSessionId = isValidUUID(data.session_id) ? data.session_id : undefined;
+
+    const payload: { message: string; session_id?: string; image?: string } = {
+      message: data.message,
+    };
+    if (currentSessionId) {
+      payload.session_id = currentSessionId;
+    }
+    if (data.image) {
+      payload.image = data.image;
+    }
+
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       Accept: 'text/event-stream',
@@ -853,10 +833,11 @@ export const aiService = {
       const response = await fetch(`${API_BASE_URL}/ai/chat/stream/`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ ...data, session_id: currentSessionId }),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
+        // Si le streaming SSE échoue (ex: endpoint stream indisponible), bascule vers le chat synchrone réel
         const fallback = await aiService.chat(data);
         onChunk(fallback.answer);
         onDone?.(fallback.answer, fallback);
@@ -910,7 +891,7 @@ export const aiService = {
                 onChunk(piece);
               }
 
-              if (parsed.sources && Array.isArray(parsed.sources) && parsed.sources.length > 0) {
+              if (parsed.sources && Array.isArray(parsed.sources)) {
                 metadata.sources = parsed.sources;
               }
               if (parsed.suggested_questions && Array.isArray(parsed.suggested_questions)) {
@@ -928,32 +909,18 @@ export const aiService = {
         }
       }
 
-      // Si le backend renvoie un refus d'information, substituer avec le RAG personnalisé selon le rôle
-      if (
-        fullText.toLowerCase().includes("ne dispose pas d'informations") ||
-        (!metadata.sources || metadata.sources.length === 0)
-      ) {
-        const rag = generateRAGResponse(data.message, user);
-        onDone?.(rag.answer, {
-          sources: rag.sources,
-          suggested_questions: rag.suggested_questions,
-          intent: rag.intent,
-          platform: rag.platform,
-          session_id: currentSessionId || `sess-${Date.now()}`,
-        });
-        return rag.answer;
-      }
-
+      // La réponse provient 100% de l'IA distante et des documents indexés sans substitution en dur
       onDone?.(fullText, metadata);
       return fullText;
-    } catch (err) {
+    } catch {
+      // En cas de coupure réseau ou erreur de streaming, tenter le chat synchrone réel
       try {
         const fallback = await aiService.chat(data);
         onChunk(fallback.answer);
         onDone?.(fallback.answer, fallback);
         return fallback.answer;
-      } catch {
-        const error = err instanceof Error ? err : new Error(String(err));
+      } catch (chatErr) {
+        const error = chatErr instanceof Error ? chatErr : new Error(String(chatErr));
         onError?.(error);
         throw error;
       }
